@@ -1,0 +1,196 @@
+#!/usr/bin/env python3
+import sys
+sys.dont_write_bytecode = True
+
+import importlib
+from pathlib import Path
+script_dir = Path(__file__).resolve().parent
+lib_dir = script_dir / 'lib'
+sys.path.insert(0, str(lib_dir))
+sys.path.insert(1, str(script_dir))
+
+
+import os
+import config
+import time
+import signal
+import secrets
+import logging
+import mmap
+from setproctitle import setproctitle
+from multiprocessing import Process, Lock
+
+import urllib.request
+import urllib.error
+
+import gunicorn.app.base
+
+#from W6Flask import W6Flask
+
+
+# Globals
+W6InternalKey = secrets.token_hex(64)
+W6Server      = None
+W6App         = None
+W6CtrlPID     = None
+W6AppPath     = (Path(__file__).resolve().parent,)
+W6ProcServer  = []
+
+
+def handle_sighup(signum, frame):
+   for p in W6ProcServer:
+      if p.is_alive():
+          try:
+              os.kill(p.pid, signal.SIGHUP)
+          except ProcessLookupError:
+              print(f"ERROR Process {p.name} not found.")
+      else:
+          print(f"ERROR {p.name} not running")
+
+signal.signal(signal.SIGHUP, handle_sighup)
+signal.signal(signal.SIGUSR1, handle_sighup)
+signal.signal(signal.SIGUSR2, handle_sighup)
+
+
+
+class W6GunicornApp(gunicorn.app.base.BaseApplication):
+   def __init__(self, appTarget, options=None):
+      self.options = options or {}
+      self.appTarget=appTarget
+      self.W6InternalKey=W6InternalKey
+      super().__init__()
+
+   def load_config(self):
+      config = {key: value for key, value in self.options.items()
+                if key in self.cfg.settings and value is not None}
+      for key, value in config.items():
+          self.cfg.set(key.lower(), value)
+#      self.cfg.set('post_fork', self.wsgi_post_fork)
+
+   def load(self):
+      gunicorn_logger = logging.getLogger('gunicorn.error')
+      gunicorn_logger.info(f"start load of {self.appTarget}")
+      pid=os.getpid()
+      modules_to_delete = []
+      for mod_name in list(sys.modules.keys()):
+         mod = sys.modules[mod_name]
+         if mod_name in ('__main__', '__mp_main__'):
+            continue
+         if not mod or not hasattr(mod, '__file__') or mod.__file__ is None: 
+            continue
+         try:
+            mod_file_path = Path(mod.__file__).resolve()
+            for allowed_dir in W6AppPath:
+               if allowed_dir in mod_file_path.parents or allowed_dir == mod_file_path:
+                  modules_to_delete.append(mod_name)
+                  break
+         except Exception:
+             continue
+
+      for mod_name in modules_to_delete:
+         gunicorn_logger.info(f"drop module {mod_name} from memory in PID={pid}")
+         del sys.modules[mod_name]
+
+ 
+      importlib.import_module("W6Flask")
+      module_path, app_variable_name = self.appTarget.split(":")
+      module = importlib.import_module(module_path)
+      importlib.reload(module)
+      self.application = getattr(module, app_variable_name)
+      self.application.ppid=os.getpid()
+      self.application.W6AppPath=W6AppPath
+      self.application.W6InternalKey=W6InternalKey
+      self.application.logger.handlers = gunicorn_logger.handlers
+      self.application.logger.setLevel(gunicorn_logger.level)
+
+      W6Flask_class = getattr(module, 'W6Flask', None)
+      if W6Flask_class:
+         W6Flask_class.load_plugins(self.application)
+      return self.application
+
+def invoke_W6Server_listener():
+   setproctitle("W6Server")
+   options = {
+      'bind': '127.0.0.1:8081',
+      'workers': 1,
+      'threads': 4,
+      'timeout': 20,
+      'graceful_timeout': 20,
+      'proc_name': "W6Server"
+   }
+   W6GunicornApp("workers.W6Server:app", options).run()
+
+def invoke_W6App_listener():
+   setproctitle("W6App")
+   options = {
+      'bind': '127.0.0.1:8080',
+      'workers': 4,
+      'threads': 16,
+      'timeout': 610,
+      'graceful_timeout': 610,
+      'proc_name': "W6App"
+   }
+   W6GunicornApp("workers.W6App:app", options).run()
+
+def normal_shutdown(signum,frame):
+   if W6CtrlPID == os.getpid():  # due fork, W5App and W5Ctrl get also signals
+      print(f"\n[W6Ctrl] Signal {signum} received!")
+      if W6Server and W6Server.is_alive():
+         W6Server.terminate()
+         W6Server.join()
+
+      if W6App and W6App.is_alive():
+         W6App.terminate()
+         W6App.join()
+
+   sys.exit(0)
+
+
+
+if __name__ == '__main__':
+  W6CtrlPID=os.getpid();
+
+  signal.signal(signal.SIGTERM, normal_shutdown)
+  signal.signal(signal.SIGINT, normal_shutdown)
+
+  W6Server=Process(target=invoke_W6Server_listener)
+  W6Server.daemon=True
+  W6ProcServer.append(W6Server)
+  W6Server.start()
+
+  W6App=Process(target=invoke_W6App_listener)
+  W6App.daemon=True
+  W6ProcServer.append(W6App)
+  W6App.start()
+
+  proxy_handler=urllib.request.ProxyHandler({}) 
+  HttpAgent=urllib.request.build_opener(proxy_handler)
+
+  setproctitle("w6ctrl")
+  time.sleep(5)
+  while True:
+     for port in [8080,8081]:
+        target=f"http://127.0.0.1:{port}"
+        try:
+           url=f"{target}/internal/internalTimer"
+           req=urllib.request.Request(url,method="GET")
+           req.add_header('X-AUTHKEY',W6InternalKey) 
+           with HttpAgent.open(req,timeout=5) as response:
+               status_code=response.status
+               result=response.read().decode('utf-8')
+
+        except (urllib.error.URLError, 
+                http.client.HTTPException, 
+                socket.error, 
+                ConnectionResetError) as e:
+           print(f"[{target}] NETZWERK-INFO/ERROR: {e}")
+           status_code = 500
+           result = "network_error"
+
+        except Exception as e:
+           print(f"[{target}] unexpected ERROR: {e}")
+           status_code = 500
+           result = "unexpected_error"
+
+        time.sleep(5)
+

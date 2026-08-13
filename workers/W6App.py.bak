@@ -1,0 +1,140 @@
+import json
+import ctypes
+import os
+import json
+import threading
+import time
+import sys
+from pathlib import Path
+import importlib
+from workers.W6Shm import  getW6Shm, setW6Shm
+from W6Flask import W6Flask, jsonify, request, current_app
+from multiprocessing import Process, Array, Event
+from kernel import *
+
+
+class W6FlaskApp(W6Flask):
+   def __init__(self, *args, **kwargs):
+      super().__init__(*args, **kwargs)
+
+
+app = W6FlaskApp(__name__)
+app.plugdir="plugin"
+
+
+@app.route('/<AppConfig>/internalTimer')
+
+def internalTimer(AppConfig):
+   auth_key = request.headers.get('X-AUTHKEY')
+   current_app.logger.info("W6App Internal timer.")
+
+   aThreads=threading.enumerate()
+#   print(f"-- [PID {os.getpid()}] Aktive Python-Threads: {len(tAll)} -")
+#   for t in tAll:
+#      print(f" . Name: {t.name:<20} | ID: {t.ident:<12} | Daemon: {t.daemon}")
+
+   if not auth_key or auth_key != current_app.W6InternalKey:
+      abort(403, description="Access denied. Invalid X-AUTHKEY token.")
+
+   runTask1(AppConfig) # ensure Task1 is running
+#   Task1running=False
+#
+#   with app.W6ShmLock:
+#      W5Shm=getW6Shm(app.W6Shm,app.W6ShmSize)
+#      if "Task1" in W5Shm:
+#         Task1running=True
+#
+#   if not Task1running:
+#      runTask1("internal")
+
+   return jsonify({"status":"success","exitcode": 0})
+
+
+
+
+@app.route('/<AppConfig>/info')
+def run_fork(AppConfig):
+   current_app.logger.info("/info call.")
+   W5Shm=None
+   with current_app.W6ShmLock:
+      W5Shm=getW6Shm(current_app.W6Shm,current_app.W6ShmSize)
+   return jsonify(W5Shm)
+
+
+
+def Task1(self,TaskLabel):
+   print(f"[Task1-Worker] Prozess mit PID {os.getpid()} gestartet.")
+   #time.sleep(5)
+   threading.Event().wait(timeout=20)
+   print(f"[Task1-Worker] exit Prozess mit PID {os.getpid()}.")
+   with self.W6ShmLock:
+      W5Shm=getW6Shm(self.W6Shm,self.W6ShmSize)
+      W5Shm[TaskLabel]["thread_state"]="finished"
+      W5Shm[TaskLabel]["thread_end"]=time.time()
+      setW6Shm(self.W6Shm,self.W6ShmSize,W5Shm)
+
+
+   
+
+@app.route('/<AppConfig>/runTask1')
+def runTask1(AppConfig):
+   current_app._get_current_object().invokeLabeledThread(Task1,"Task1")
+
+
+   handlerName="Task1"
+
+   with current_app.W6ShmLock:
+      W5Shm=getW6Shm(current_app.W6Shm,current_app.W6ShmSize)
+      if handlerName in W5Shm:
+         if (ist_pid_aktiv(W5Shm[handlerName]["thread_pid"])):
+            if (not(not W5Shm[handlerName]["thread_state"] or
+                    W5Shm[handlerName]["thread_state"] != "running")):
+               if (W5Shm[handlerName]["thread_pid"] == os.getpid()):
+                  aThreads=threading.enumerate()
+                  t=None
+                  for tChk in aThreads:
+                     if (tChk.name==handlerName):
+                        t=tChk
+                  if (t):
+                     if (t.is_alive()):
+                        return jsonify({
+                            "status": "already_running",
+                            "thread_id": t.ident,
+                            "exitcode": 0
+                        })
+               else:
+                  return jsonify({
+                      "status": "already_running_anywhere",
+                      "thread_pid": W5Shm[handlerName]["thread_pid"],
+                      "exitcode": 0
+                  })
+
+      t=threading.Thread(
+           name=handlerName,
+           target=Task1,
+           args=(current_app._get_current_object(),handlerName),
+           daemon=True
+      )
+      t.start()
+     
+      W5Shm[handlerName]={
+         "thread_start": time.time(),
+         "thread_end": None,
+         "thread_pid": os.getpid(),
+         "thread_id": t.ident,
+         "thread_state": "running"
+      } 
+      setW6Shm(current_app.W6Shm,current_app.W6ShmSize,W5Shm)
+
+   return jsonify({
+      "status":"success started",
+      "thread_id": t.ident,
+      "exitcode": 0
+   })
+
+
+
+if __name__ == '__main__':
+    app.run(port=8080)
+
+

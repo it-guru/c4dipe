@@ -1,0 +1,7 @@
+Controler for DataObjects in Python-Environments
+
+C4DiPE  (spoken: C for DIPE)
+
+Debian Based Packages:
+
+aptitude  install python3-setproctitle python3-gunicorn python3-flask python3-PyMySQL python3-pyodbc python3-sqlalchemy python-flask-sqlalchemy
