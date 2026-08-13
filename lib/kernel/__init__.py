@@ -3,6 +3,7 @@ import sys
 from pathlib import Path
 import importlib.util
 import types
+from config import config
 
 __all__ = ['funktion1', 'ist_pid_aktiv', 'importToNamespace','getModuleObject']
 
@@ -77,7 +78,7 @@ def importToNamespace(file_path,target_namespace_str):
 
 def getModuleObject(module: str, dataobj: str):
   search_paths = [
-      Path(f"/home/a295897/src/SNowRepl/src/mod/{module}/{dataobj}.py"),
+      Path(f"/home/a295897/src/c4dipe/mod/{module}/{dataobj}.py"),
       Path(f"/opt/{module}/{dataobj}.py"),
       Path(f"/usr/{module}/{dataobj}.py"),
   ]
@@ -89,12 +90,17 @@ def getModuleObject(module: str, dataobj: str):
   if not target_file:
     return None
 
+  mod_name = f"dyn_mod_{module}_{dataobj}"
   class_name = (
       f"{module[0].upper()}{module[1:]}{dataobj[0].upper()}{dataobj[1:]}"
   )
 
   try:
-    mod_name = f"dyn_mod_{module}_{dataobj}"
+    if mod_name in sys.modules:
+       mod = sys.modules[mod_name]
+       cls = getattr(mod, class_name)
+       return cls()
+
 
     spec = importlib.util.spec_from_file_location(mod_name, target_file)
     if spec is None or spec.loader is None:

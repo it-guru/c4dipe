@@ -5,6 +5,7 @@ import sys
 import time
 import threading
 from kernel import *
+from logger import *
 from setproctitle import setproctitle
 
 from config import config
@@ -18,7 +19,7 @@ from pprint import pformat, pprint
 
 
 
-from W6Flask import W6Flask, jsonify, request, current_app
+from W6Flask import W6Flask, jsonify, request, current_app, abort
 
 class W6FlaskServer(W6Flask):
    def __init__(self, *args, **kwargs):
@@ -49,10 +50,23 @@ def internalTimer(AppConfig):
    return jsonify({"status":"success","exitcode": 0})
 
 
+@app.route('/<AppConfig>/getConfig')
+def getConfig(AppConfig):
+   auth_key = request.headers.get('X-AUTHKEY')
+   if not auth_key or auth_key != current_app.W6InternalKey:
+      abort(403, description="Access denied. Invalid X-AUTHKEY token.")
+ 
+   return jsonify({
+       "status":"success",
+       "exitcode": 0,
+       "result": config,
+   })
+
+
 @app.route('/<AppConfig>/<module>/<dataobj>/<method>', methods=['GET', 'POST'])
 def do_dbcall(AppConfig,module,dataobj,method):
    dataobjname=f"{module}.{dataobj}"
-   current_app.logger.info(f"/db call {method} to {dataobjname} .")
+   logger.info(f"call {method} to {dataobjname}")
 
 
    o=getModuleObject(module,dataobj)

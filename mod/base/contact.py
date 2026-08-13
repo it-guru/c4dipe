@@ -10,6 +10,7 @@ from kernel.field   import *
 from kernel.dataobj import *
 
 from kernel.condition import *
+from logger import *
 import kernel.condition.base
 
 from pprint import pformat, pprint
@@ -17,7 +18,7 @@ from pprint import pformat, pprint
 class BaseContact(DataObjSQLDB):
     def __init__(self):
        super().__init__()
-       self._configSection = "GLOBAL"
+       self._configSection = "BASE"
        self.is_connected = False
        self._currentResultSet = None
        self.addFields(
@@ -57,6 +58,7 @@ class BaseContact(DataObjSQLDB):
        wherestr,qparam=ASTprocessor.compile(self._CurrentAST.getAST())
 
        self._lastSQL="select * from grp "+wherestr+" limit 10"
+       logger.debug("SQL: "+pformat(self._lastSQL))
        result={}
        result["data"]=[]
      
@@ -110,8 +112,11 @@ class BaseContact(DataObjSQLDB):
     def sql_get_next(self):
        if (not self._currentResultSet is None):
           row = self._currentResultSet.fetchone()
-          self._RECNO+=1
-          return(row)
+          if (not row is None):
+             self._RECNO+=1
+             if hasattr(row, "_mapping"):
+                return dict(row._mapping)
+             return(dict(row))
        else:
           print("ERROR: call sql_get_next without self._currentResultSet")
        return(None)
@@ -120,7 +125,7 @@ class BaseContact(DataObjSQLDB):
        row=self.sql_get_next()
        if not row is None:
           mrow={}
-          for k,v in dict(row._mapping).items():
+          for k,v in row.items():
              if isinstance(v, datetime):
                 if v is None:
                    mapped_row[k]=v

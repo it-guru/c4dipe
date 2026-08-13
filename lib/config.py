@@ -4,9 +4,8 @@ from configparser import ConfigParser
 import urllib.request
 import urllib.error
 import time
-import logging
+from logger import *
 
-logger = logging.getLogger('gunicorn.error')
 
 class AutoReloadConfigParser(dict):
     def __init__(self, config_file="config.ini", ttl_seconds=1200):
@@ -34,12 +33,17 @@ class AutoReloadConfigParser(dict):
                     self._load_from_url(temp_parser, url)
 
             self._parser = temp_parser
-
             self.clear()
-
+            global_defaults = {}
+            if temp_parser.has_section("*"):
+               for key, val in temp_parser["*"].items():
+                 if isinstance(val, str):
+                   global_defaults[key] = val.strip().strip('"\'')
+                 else:
+                   global_defaults[key] = val
 
             for section in temp_parser.sections():
-                section_data = {}
+                section_data = global_defaults.copy()
                 for key, val in temp_parser[section].items():
                     if isinstance(val, str):
                         cleanval = val.strip().strip('"\'')

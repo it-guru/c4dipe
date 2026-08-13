@@ -11,11 +11,12 @@ sys.path.insert(1, str(script_dir))
 
 
 import os
-import config
+from config import *
 import time
 import signal
 import secrets
-import logging
+#import logging
+from logger import *
 import mmap
 from setproctitle import setproctitle
 from multiprocessing import Process, Lock
@@ -29,7 +30,13 @@ import gunicorn.app.base
 
 
 # Globals
+
+
 W6InternalKey = secrets.token_hex(64)
+
+if ("X-AUTHKEY" in config["GLOBAL"]):
+   W6InternalKey = config["GLOBAL"]["X-AUTHKEY"]
+
 W6Server      = None
 W6App         = None
 W6CtrlPID     = None
@@ -68,8 +75,8 @@ class W6GunicornApp(gunicorn.app.base.BaseApplication):
 #      self.cfg.set('post_fork', self.wsgi_post_fork)
 
    def load(self):
-      gunicorn_logger = logging.getLogger('gunicorn.error')
-      gunicorn_logger.info(f"start load of {self.appTarget}")
+      #gunicorn_logger = logging.getLogger('gunicorn.error')
+      logger.info(f"start load of {self.appTarget}")
       pid=os.getpid()
       modules_to_delete = []
       for mod_name in list(sys.modules.keys()):
@@ -88,7 +95,7 @@ class W6GunicornApp(gunicorn.app.base.BaseApplication):
              continue
 
       for mod_name in modules_to_delete:
-         gunicorn_logger.info(f"drop module {mod_name} from memory in PID={pid}")
+         logger.info(f"drop module {mod_name} from memory in PID={pid}")
          del sys.modules[mod_name]
 
  
@@ -100,8 +107,8 @@ class W6GunicornApp(gunicorn.app.base.BaseApplication):
       self.application.ppid=os.getpid()
       self.application.W6AppPath=W6AppPath
       self.application.W6InternalKey=W6InternalKey
-      self.application.logger.handlers = gunicorn_logger.handlers
-      self.application.logger.setLevel(gunicorn_logger.level)
+      #self.application.logger.handlers = gunicorn_logger.handlers
+      #self.application.logger.setLevel(gunicorn_logger.level)
 
       W6Flask_class = getattr(module, 'W6Flask', None)
       if W6Flask_class:
@@ -116,7 +123,8 @@ def invoke_W6Server_listener():
       'threads': 4,
       'timeout': 20,
       'graceful_timeout': 20,
-      'proc_name': "W6Server"
+      'proc_name': "W6Server",
+      'loglevel': os.environ.get('LOG_LEVEL', 'warning').lower()
    }
    W6GunicornApp("workers.W6Server:app", options).run()
 
@@ -128,7 +136,8 @@ def invoke_W6App_listener():
       'threads': 16,
       'timeout': 610,
       'graceful_timeout': 610,
-      'proc_name': "W6App"
+      'proc_name': "W6App",
+      'loglevel': os.environ.get('LOG_LEVEL', 'warning').lower()
    }
    W6GunicornApp("workers.W6App:app", options).run()
 
