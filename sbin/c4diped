@@ -5,7 +5,7 @@ sys.dont_write_bytecode = True
 import importlib
 from pathlib import Path
 script_dir = Path(__file__).resolve().parent
-lib_dir = script_dir / 'lib'
+lib_dir = script_dir / '..' / 'lib'
 sys.path.insert(0, str(lib_dir))
 sys.path.insert(1, str(script_dir))
 
