@@ -63,14 +63,26 @@ def getConfig(AppConfig):
    })
 
 
+@app.route('/<AppConfig>/<module>/event/<evname>/<any(sync,async):mode>', 
+           methods=['GET','POST'])
+def runEvent(AppConfig,module,evname,mode):
+   dataobjname=f"{module}.{evname}"
+   auth_key = request.headers.get('X-AUTHKEY')
+   print("Got X-AUTHKEY=%s" % auth_key);
+   if not auth_key or auth_key != current_app.W6InternalKey:
+      abort(403, description="Access denied. Invalid X-AUTHKEY token.")
+
+
+   return jsonify({"status":"success","exitcode": 0})
+
+
+
 @app.route('/<AppConfig>/<module>/<dataobj>/<method>', methods=['GET', 'POST'])
 def do_dbcall(AppConfig,module,dataobj,method):
    dataobjname=f"{module}.{dataobj}"
    logger.info(f"call {method} to {dataobjname}")
 
-
    o=getModuleObject(module,dataobj)
-
    if (o is None):
       return jsonify({
                        "status":"failed",
@@ -79,18 +91,14 @@ def do_dbcall(AppConfig,module,dataobj,method):
                                   "failed to instance"
       })
 
-
    auth_key = request.headers.get('X-AUTHKEY')
 
    param=request.values.to_dict()
-
    search_criteria=[
       [
         param 
       ] 
    ]
-
-
 
    if (not auth_key or auth_key != current_app.W6InternalKey):
       o.secureSetFilter(search_criteria)
@@ -101,6 +109,11 @@ def do_dbcall(AppConfig,module,dataobj,method):
    result=o.getDictList() 
                    
    return jsonify({"status":"success","exitcode": 0, "result" : result})
+
+
+
+
+
 
 
 
@@ -140,8 +153,6 @@ def rpcGetUniqueId(AppConfig):
      newID=self.UniqueID_rec["UniqueIdPool"].pop(0)
    return jsonify({"status":"success","exitcode": 0, "UniqueID": newID})
 
-
-rpcGetUniqueId
 
 @app.route('/<AppConfig>/runProc')
 def runProc(AppConfig):

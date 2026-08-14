@@ -4,7 +4,10 @@ from configparser import ConfigParser
 import urllib.request
 import urllib.error
 import time
+import secrets
+from pathlib import Path
 from logger import *
+from pprint import pprint
 
 
 class AutoReloadConfigParser(dict):
@@ -53,7 +56,20 @@ class AutoReloadConfigParser(dict):
 
                 self[section] = section_data
 
+
             self.last_loaded = time.time()
+
+            if ("GLOBAL" not in self):
+              self["GLOBAL"] = global_defaults.copy()
+
+            if (not self["GLOBAL"].get("X-AUTHKEY")):
+              self["GLOBAL"]["X-AUTHKEY"] = secrets.token_hex(64)
+              logger.info("dynamic generated X-AUTHKEY for [GLOBAL] section!")
+
+            if (not self["GLOBAL"].get("BASE_DIR")):
+              self["GLOBAL"]["BASE_DIR"]= \
+                  str(Path(__file__).resolve().parents[1])
+
             logger.info("Config successfuly loaded")
 
         except Exception as e:

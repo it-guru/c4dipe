@@ -42,6 +42,8 @@ final_args = [REAL_CURL] + extra_args + sys.argv[1:]
 
 # 5. Replace current Python process image with the actual curl binary
 try:
+  for proxy_var in ["http_proxy", "HTTP_PROXY", "https_proxy", "HTTPS_PROXY"]:
+     os.environ.pop(proxy_var, None)
   os.execv(REAL_CURL, final_args)
 except FileNotFoundError:
   sys.stderr.write(f"Error: System curl binary not found at {REAL_CURL}.\n")

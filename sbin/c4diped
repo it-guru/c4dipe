@@ -26,6 +26,13 @@ import urllib.error
 
 import gunicorn.app.base
 
+from scheduler import DynamicScheduler
+
+import http.client
+import socket
+
+from pprint import pprint
+
 #from W6Flask import W6Flask
 
 
@@ -117,6 +124,12 @@ class W6GunicornApp(gunicorn.app.base.BaseApplication):
 
 def invoke_W6Server_listener():
    setproctitle("W6Server")
+   scheduler = DynamicScheduler()
+
+   def on_exit(server):
+      print("[W6Server] Stopping CronScheduler background thread...")
+      scheduler.stop()
+
    options = {
       'bind': '127.0.0.1:8081',
       'workers': 1,
@@ -124,8 +137,12 @@ def invoke_W6Server_listener():
       'timeout': 20,
       'graceful_timeout': 20,
       'proc_name': "W6Server",
+      'on_exit': on_exit,
       'loglevel': os.environ.get('LOG_LEVEL', 'warning').lower()
    }
+
+   scheduler.start()
+
    W6GunicornApp("workers.W6Server:app", options).run()
 
 def invoke_W6App_listener():
@@ -172,34 +189,8 @@ if __name__ == '__main__':
   W6ProcServer.append(W6App)
   W6App.start()
 
-  proxy_handler=urllib.request.ProxyHandler({}) 
-  HttpAgent=urllib.request.build_opener(proxy_handler)
-
-  setproctitle("w6ctrl")
-  time.sleep(5)
+  setproctitle("c4diped")
   while True:
-     for port in [8080,8081]:
-        target=f"http://127.0.0.1:{port}"
-        try:
-           url=f"{target}/internal/internalTimer"
-           req=urllib.request.Request(url,method="GET")
-           req.add_header('X-AUTHKEY',W6InternalKey) 
-           with HttpAgent.open(req,timeout=5) as response:
-               status_code=response.status
-               result=response.read().decode('utf-8')
+     time.sleep(99)
 
-        except (urllib.error.URLError, 
-                http.client.HTTPException, 
-                socket.error, 
-                ConnectionResetError) as e:
-           print(f"[{target}] NETZWERK-INFO/ERROR: {e}")
-           status_code = 500
-           result = "network_error"
-
-        except Exception as e:
-           print(f"[{target}] unexpected ERROR: {e}")
-           status_code = 500
-           result = "unexpected_error"
-
-        time.sleep(5)
 

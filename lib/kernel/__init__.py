@@ -3,6 +3,7 @@ import sys
 from pathlib import Path
 import importlib.util
 import types
+from pprint import pprint
 from config import config
 
 __all__ = ['funktion1', 'ist_pid_aktiv', 'importToNamespace','getModuleObject']
@@ -77,12 +78,17 @@ def importToNamespace(file_path,target_namespace_str):
 
 
 def getModuleObject(module: str, dataobj: str):
-  search_paths = [
-      Path(f"/home/a295897/src/c4dipe/mod/{module}/{dataobj}.py"),
-      Path(f"/opt/{module}/{dataobj}.py"),
-      Path(f"/usr/{module}/{dataobj}.py"),
-  ]
-  # todo: Implement search path for dataobjs
+
+  search_paths = []
+  base_dir=config["GLOBAL"]["BASE_DIR"]
+  modpath_str = config.get("GLOBAL", {}).get("MOD_PATH", "")
+  raw_paths = [p.strip() for p in modpath_str.split(":") if p.strip()]
+  for raw_path in raw_paths:
+     if not raw_path.startswith("/"):
+        dir_path = Path(base_dir) / raw_path
+     else:
+        dir_path = Path(raw_path)
+     search_paths.append(dir_path / "mod" / module / f"{dataobj}.py")
 
   target_file = next((p for p in search_paths if p.is_file()), None)
 
