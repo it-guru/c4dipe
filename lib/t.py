@@ -1,7 +1,6 @@
 
-import kernel.query.int
-import kernel.query.SQL
-import kernel.query.Static
+from kernel.condition import *
+from kernel.field import *
 import json
 
 search_criteria = [ # Level 1 (AND)
@@ -33,19 +32,21 @@ fieldmap={
 }
 
 
-ast=kernel.query.int.build_ast(search_criteria,fieldmap)
+ast=ConditionalAST(self,self._CurrentFilterExpr)
+
+
 
 print("iquery=%s" % json.dumps(search_criteria,indent=2))
 print("astree=%s" % json.dumps(ast.to_dict(),indent=2))
 
-c=kernel.query.SQL.Compiler()
-wherestr,qparam=c.compile(ast)
+ASTprocessor=ConditionSQL()
+wherestr,qparam=ASTprocessor.compile(ast.getAST())
 print("where=%s" % wherestr)
 print("qparam=%s" % json.dumps(qparam,indent=2))
 
 
-m=kernel.query.Static.Compiler()
-matcher=m.compile(ast)
-print("Static matcher code=%s" % matcher.__source__)
+#m=kernel.condition.Static.Compiler()
+#matcher=m.compile(ast)
+#print("Static matcher code=%s" % matcher.__source__)
 
 

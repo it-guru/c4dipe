@@ -1,272 +1,253 @@
 import re
-import json
-from typing import Dict, List, Tuple, Any, Union, Optional
-from kernel.field import *
-import weakref
-
-# =========================================================================
-# 1. AST / Intermediate Representation (Language-Agnostic Tree)
-# =========================================================================
+from typing import Any, Dict, List, Optional, Union
 
 
 class ConditionASTNode:
-   def to_dict(self):
-      raise NotImplementedError()
+   """
+   Base class for all AST nodes in the condition parser.
+   """
+   pass
 
 
 class ConditionExprNode(ConditionASTNode):
-   def __init__(self,
-                field: str, 
-                operator:str, 
-                value: str,
-                fldobj:Dict, 
-                is_literal:bool = False,
-                negation:bool = False
-      ):
-      self.fldobj = fldobj
-      self.field = field
-      self.operator = operator  # "=" or "LIKE"
-      self.negation = negation 
-      self.value = value
-      self.is_literal = is_literal 
+   """
+   Represents a terminal expression node comparing a field against a value.
+   """
 
-   def to_dict(self):
-      return({
-         "type": "Condition",
-         "field": self.field,
-         "fldobj": self.fldobj,
-         "operator": self.operator,
-         "value": self.value,
-         "is_literal": self.is_literal,
-         "negation": self.negation
-      })
+   def __init__(self, field_name: str, op: str, value: Any, negate: bool = False):
+      self.field_name = field_name
+      self.op = op.upper() if op else "="
+      self.value = value
+      self.negate = negate
+
+   def __repr__(self) -> str:
+      return f"ConditionExprNode(field='{self.field_name}', op='{self.op}', val={repr(self.value)}, negate={self.negate})"
 
 
 class ConditionLogicalNode(ConditionASTNode):
-   def __init__(self, op: str, children: List[ConditionASTNode]):
-      self.op = op.upper()  # "AND" or "OR"
-      self.children = children
-
-   def to_dict(self):
-      return {
-         "type": "Logical",
-         "op": self.op,
-         "children": [child.to_dict() for child in self.children]
-      }
-
-
-
-# =========================================================================
-# 2. Parsing Logic (Input Data -> AST)
-# =========================================================================
-
-_WLD_CHUNK_RE=re.compile(r'(\\\\|\\\*|\\\?|\\%|\\_|\*|\?|%|_|\\|.)',re.DOTALL)
-_TOKEN_STR_RE=re.compile(r"'[^']*'|\"[^\"]*\"|\S+")
-
-
-def _apply_wildcard_rules(raw_val: str) -> Tuple[str, str, bool]:
    """
-   Rules:
-   - Unescaped '*' converts to '%' (triggers LIKE)
-   - Unescaped '?' converts to '_' (triggers LIKE)
-   - Escaped wildcards (\*, \?, \%, \_) are treated as literal characters
-   - Unescaped % and _ are escaped to \% and \_ for SQL LIKE safety
+   Represents a logical grouping (AND / OR) of child AST nodes.
    """
-   compop="="
 
-   negation=False
+   def __init__(self, logical_op: str, children: Optional[List[ConditionASTNode]] = None):
+      self.logical_op = logical_op.upper()  # "AND" or "OR"
+      self.children = children if children is not None else []
 
-   if raw_val.startswith("!"):
-      negation=True
-      raw_val=re.sub(r"^.\s*","",raw_val)
+   def add_child(self, node: Optional[ConditionASTNode]):
+      if node is not None:
+         self.children.append(node)
 
-   if raw_val.startswith("="):
-      compop="="
-      raw_val=re.sub(r"^.\s*","",raw_val)
-   if raw_val.startswith(">"):
-      compop=">"
-      raw_val=re.sub(r"^.\s*","",raw_val)
-   elif raw_val.startswith("<"):
-      compop="<"
-      raw_val=re.sub(r"^.\s*","",raw_val)
-
-   chunks = _WLD_CHUNK_RE.findall(raw_val)
-   has_active_wildcard = False
-   like_chars = []
-   eq_chars = []
-
-   for chunk in chunks:
-       if chunk == '*':
-           has_active_wildcard = True
-           like_chars.append('%')
-       elif chunk == '?':
-           has_active_wildcard = True
-           like_chars.append('_')
-       elif chunk == r'\*':
-           like_chars.append('*')
-           eq_chars.append('*')
-       elif chunk == r'\?':
-           like_chars.append('?')
-           eq_chars.append('?')
-       elif chunk == r'\%':
-           like_chars.append(r'\%')
-           eq_chars.append('%')
-       elif chunk == r'\_':
-           like_chars.append(r'\_')
-           eq_chars.append('_')
-       elif chunk == r'\\':
-           like_chars.append(r'\\')
-           eq_chars.append('\\')
-       elif chunk == '%':
-           like_chars.append(r'\%')
-           eq_chars.append('%')
-       elif chunk == '_':
-           like_chars.append(r'\_')
-           eq_chars.append('_')
-       elif chunk == '\\':
-           like_chars.append(r'\\')
-           eq_chars.append('\\')
-       else:
-           like_chars.append(chunk)
-           eq_chars.append(chunk)
-
-   if has_active_wildcard:
-       return "LIKE", "".join(like_chars), negation
-   else:
-       return compop, "".join(eq_chars), negation
+   def __repr__(self) -> str:
+      return f"ConditionLogicalNode({self.logical_op}, children={self.children})"
 
 
-def parse_fld_val(field:str,raw_value:Any,fldobj:Dict)->Optional[ConditionASTNode]:
+def _tokenize_value_string(val_str: str, is_date_field: bool) -> List[str]:
+   """
+   Tokenizes an expression string into individual condition blocks.
+   Handles quoted strings ('...' or "..."), whitespace separation,
+   and unquoted YYYY-MM-DD HH:MM:SS timestamps for Date fields.
+   """
+   tokens = []
+   length = len(val_str)
+   i = 0
 
-   if raw_value is None:
-      return None
+   # Regex pattern to match unquoted timestamp patterns like 2026-06-01 10:23:44
+   date_pattern = re.compile(r"^(!|>=|<=|>|<|=)?\d{4}-\d{2}-\d{2}\s+\d{2}:\d{2}:\d{2}")
 
-   # Rule: Value is a List -> Process elements as constants (=), OR-connected
-   if isinstance(raw_value, list):
-      conds=[
-         ConditionExprNode(field,"=",str(item),fldobj,is_literal=True)
-         for item in raw_value if item is not None and str(item).strip() != ""
-      ]
-      if not conds:
-         return None
-      return ConditionLogicalNode("OR",conds) if len(conds)>1 else conds[0]
+   while i < length:
+      # Skip leading whitespace
+      while i < length and val_str[i].isspace():
+         i += 1
+      if i >= length:
+         break
 
-   # Rule: Value is a String
-   value_str = str(raw_value).strip()
-   if not value_str:
-      return None
+      # Check for unquoted date/time string if field is Date/MDate
+      if is_date_field:
+         match = date_pattern.match(val_str[i:])
+         if match:
+            token_str = match.group(0)
+            tokens.append(token_str)
+            i += len(token_str)
+            continue
 
+      char = val_str[i]
 
-   if (isinstance(fldobj,FieldDate)):
-      if (not value_str.startswith('"') and not value_str.startswith("'")):
-         value_str='"'+value_str+'"'
-
-   tokens = _TOKEN_STR_RE.findall(value_str)
-   conds = []
-
-   for token in tokens:
-      # Single-quoted string -> Exact match (=), no wildcard processing
-      if token.startswith("'") and token.endswith("'") and len(token) >= 2:
-         clean_val = token[1:-1]
-         conds.append(ConditionExprNode(field,"=",clean_val,fldobj,is_literal=True))
-      else:
-         # Double-quoted or unquoted token -> Process wildcards
-         if token.startswith('"') and token.endswith('"') and len(token) >= 2:
-             raw_token_val = token[1:-1]
-         else:
-             raw_token_val = token
-
-         sql_op, param_val, negation = _apply_wildcard_rules(raw_token_val)
-         conds.append(ConditionExprNode(field,sql_op,
-                                    param_val,
-                                    fldobj,
-                                    is_literal=False,
-                                    negation=negation)
-         )
-
-   if not conds:
-       return None
-
-   return ConditionLogicalNode("OR",conds) if len(conds) > 1 else conds[0]
-
-
-def parse_dict(d: Dict[str, Any],fldmap: Dict) -> Optional[ConditionASTNode]:
-    fld_nodes = []
-    for fld,raw_val in d.items():
-       if (not fld in fldmap): 
-          fldmap[fld]={"type":"String"}
-       node=parse_fld_val(fld,raw_val,fldmap[fld])
-       if node:
-          fld_nodes.append(node)
-
-    if not fld_nodes:
-       return None
-
-    return ConditionLogicalNode("AND",fld_nodes) if len(fld_nodes)>1 else fld_nodes[0]
-
-
-def build_ast(
-    criteria:Union[Dict[str,Any],List[Dict[str,Any]],List[List[Dict[str,Any]]]],
-    fieldmap:Dict[str,Dict]
-   ) -> Optional[ConditionASTNode]:
-    """
-    Normalizes the input structure into 2D List and builds the AST:
-    - Level 1 (Outer List): AND-connected
-    - Level 2 (Inner List): OR-connected
-    """
-    if isinstance(criteria, dict):
-        normalized = [[criteria]]
-    elif isinstance(criteria, list):
-        if not criteria:
-            return None
-        if isinstance(criteria[0], dict):
-            normalized = [[d] for d in criteria]
-        elif isinstance(criteria[0], list):
-            normalized = criteria
-        else:
-            raise ValueError("Unsupported list element type.")
-    else:
-        raise ValueError("Input criteria must be a dict, " \
-                         "list of dicts, or 2D list of dicts.")
-
-    level1_nodes = []
-
-    for level2_list in normalized:
-        level2_nodes = []
-        for d in level2_list:
-            node = parse_dict(d,fieldmap)
-            if node:
-                level2_nodes.append(node)
-
-        if level2_nodes:
-            if len(level2_nodes)>1:
-               group_node=ConditionLogicalNode("OR",level2_nodes)
+      # Quoted block ('...' or "...")
+      if char in ("'", '"'):
+         quote_char = char
+         start = i
+         i += 1
+         while i < length and val_str[i] != quote_char:
+            if val_str[i] == "\\" and i + 1 < length:
+               i += 2  # Skip escaped characters
             else:
-               group_node=level2_nodes[0]
-            level1_nodes.append(group_node)
+               i += 1
+         if i < length and val_str[i] == quote_char:
+            i += 1  # Include closing quote
+         tokens.append(val_str[start:i])
 
-    if not level1_nodes:
-        return None
+      # Unquoted block (read until whitespace)
+      else:
+         start = i
+         while i < length and not val_str[i].isspace():
+            i += 1
+         tokens.append(val_str[start:i])
 
-    if (len(level1_nodes) > 1):
-       return(ConditionLogicalNode("AND",level1_nodes))
-
-    return(level1_nodes[0])
-
-
-######################################################################
-
-
-class ConditionalAST():
-   def __init__(self,parent,filterExpr):
-      self._AST=build_ast(filterExpr,parent._Field)
-
-   def getAST(self):
-      return(self._AST)
+   return tokens
 
 
+def _parse_single_block(block: str, fld_obj: Any) -> ConditionExprNode:
+   """
+   Parses a single condition block token (e.g. '!>=100', '*HANS*', "='Hello World'").
+   Extracts NEGATION, OPERATOR, and EXPRESSION value.
+   """
+   raw_block = block.strip()
+   is_quoted_single = raw_block.startswith("'") and raw_block.endswith("'") and len(raw_block) >= 2
+   is_quoted_double = raw_block.startswith('"') and raw_block.endswith('"') and len(raw_block) >= 2
 
-__all__ = [k for k in locals() if k.startswith("Condition")]
+   # 1. Parse Negation
+   negate = False
+   if raw_block.startswith("!"):
+      negate = True
+      raw_block = raw_block[1:]
+
+   # 2. Extract Operator
+   op = None
+   operators = [">=", "<=", ">", "<", "="]
+   for candidate_op in operators:
+      if raw_block.startswith(candidate_op):
+         op = candidate_op
+         raw_block = raw_block[len(candidate_op):]
+         break
+
+   # 3. Handle Quoted vs Unquoted Expression
+   if is_quoted_single or is_quoted_double:
+      # Strip quotes
+      expr = raw_block[1:-1] if (raw_block.startswith("'") or raw_block.startswith('"')) else raw_block
+   else:
+      expr = raw_block
+
+   # 4. Wildcard Detection (* or ?)
+   has_wildcards = ("*" in expr or "?" in expr) and not (is_quoted_single)
+
+   if has_wildcards:
+      if op is not None:
+         raise ValueError(f"Invalid condition construct: Operators like '{op}' are not allowed with wildcards in '{block}'")
+      op = "LIKE"
+   elif op is None:
+      op = "="
+
+   # 5. Apply prepConditionString if available on field object
+   if hasattr(fld_obj, "prepConditionString") and callable(fld_obj.prepConditionString):
+      expr = fld_obj.prepConditionString(expr)
+
+   # Determine backend field reference name
+   backend_name = getattr(fld_obj, "backendname", None)
+
+   return ConditionExprNode(field_name=backend_name, op=op, value=expr, negate=negate)
 
 
+def _parse_field_value_expression(fld_name: str, val: Union[str, List[Any]], fld_obj: Any) -> ConditionASTNode:
+   """
+   Parses a single field's condition value (List or String) into an AST structure.
+   """
+   backend_name = getattr(fld_obj, "backendname", fld_name)
 
+   # Check if field is Date or MDate type
+   fld_class_name = fld_obj.__class__.__name__ if fld_obj else ""
+   is_date_field = "Date" in fld_class_name
+
+   # Case 1: Value is a List -> OR-connected '=' conditions
+   if isinstance(val, list):
+      or_node = ConditionLogicalNode("OR")
+      for item in val:
+         item_val = item
+         if hasattr(fld_obj, "prepConditionString") and callable(fld_obj.prepConditionString):
+            item_val = fld_obj.prepConditionString(item_val)
+         or_node.add_child(ConditionExprNode(field_name=backend_name, op="=", value=item_val, negate=False))
+      return or_node if len(or_node.children) > 1 else (or_node.children[0] if or_node.children else None)
+
+   # Case 2: Value is a String
+   elif isinstance(val, str):
+      # Split by " AND " first
+      and_segments = val.split(" AND ")
+      and_node = ConditionLogicalNode("AND")
+
+      for segment in and_segments:
+         # Tokenize segment into whitespace-separated blocks (OR-connected)
+         tokens = _tokenize_value_string(segment, is_date_field)
+         if not tokens:
+            continue
+
+         or_node = ConditionLogicalNode("OR")
+         for token in tokens:
+            expr_node = _parse_single_block(token, fld_obj)
+            or_node.add_child(expr_node)
+
+         if len(or_node.children) == 1:
+            and_node.add_child(or_node.children[0])
+         elif len(or_node.children) > 1:
+            and_node.add_child(or_node)
+
+      if len(and_node.children) == 1:
+         return and_node.children[0]
+      elif len(and_node.children) > 1:
+         return and_node
+
+   # Case 3: Fallback for scalar non-string values
+   return ConditionExprNode(field_name=backend_name, op="=", value=val, negate=False)
+
+
+def build_ast(filterExpr: List[List[Dict[str, Any]]], parent_fields: Dict[str, Any]) -> Optional[ConditionASTNode]:
+   """
+   Builds a Condition AST from a nested filter expression structure.
+
+   Structure:
+   Level 1 (Outer List): AND-connected groups
+   Level 2 (Inner List): OR-connected dict-conditions
+   Dict-Conditions: Key-Value pairs matching fields in parent_fields
+   """
+   if not filterExpr:
+      return None
+
+   level1_and_node = ConditionLogicalNode("AND")
+
+   for level2_list in filterExpr:
+      if not level2_list:
+         continue
+
+      level2_or_node = ConditionLogicalNode("OR")
+
+      for dict_cond in level2_list:
+         if not dict_cond:
+            continue
+
+         # Each dict condition groups its field constraints with AND
+         dict_and_node = ConditionLogicalNode("AND")
+
+         for fld_key, fld_val in dict_cond.items():
+            if fld_key not in parent_fields:
+               continue
+
+            fld_obj = parent_fields[fld_key]
+            field_ast = _parse_field_value_expression(fld_key, fld_val, fld_obj)
+
+            if field_ast:
+               dict_and_node.add_child(field_ast)
+
+         if len(dict_and_node.children) == 1:
+            level2_or_node.add_child(dict_and_node.children[0])
+         elif len(dict_and_node.children) > 1:
+            level2_or_node.add_child(dict_and_node)
+
+      if len(level2_or_node.children) == 1:
+         level1_and_node.add_child(level2_or_node.children[0])
+      elif len(level2_or_node.children) > 1:
+         level1_and_node.add_child(level2_or_node)
+
+   if len(level1_and_node.children) == 1:
+      return level1_and_node.children[0]
+   elif len(level1_and_node.children) > 1:
+      return level1_and_node
+
+   return None
