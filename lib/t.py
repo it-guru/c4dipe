@@ -84,7 +84,6 @@ ast=ConditionalAST(search_criteria,fieldmap)
 
 print("astree=%s" % json.dumps(ast.getAST().to_dict(),indent=2))
 
-exit(0)
 ASTprocessor=ConditionSQL()
 wherestr,qparam=ASTprocessor.compile(ast.getAST())
 print("where=%s" % wherestr)
