@@ -53,11 +53,11 @@ class BaseContact(DataObjSQLDB):
 
     def getDictList(self,view:str="ALL",filterExpr=None):
 
-       self._CurrentAST=ConditionalAST(self,self._CurrentFilterExpr)
+       self._CurrentAST=ConditionalAST(self._CurrentFilterExpr,self._Field)
        ASTprocessor=ConditionSQL()
        wherestr,qparam=ASTprocessor.compile(self._CurrentAST.getAST())
 
-       self._lastSQL="select * from grp "+wherestr+" limit 10"
+       self._lastSQL="select * from grp where "+wherestr+" limit 10"
        logger.debug("SQL: "+pformat(self._lastSQL))
        result={}
        result["data"]=[]

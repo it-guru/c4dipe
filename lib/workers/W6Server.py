@@ -100,6 +100,8 @@ def do_dbcall(AppConfig,module,dataobj,method):
       ] 
    ]
 
+   pprint(search_criteria)
+
    if (not auth_key or auth_key != current_app.W6InternalKey):
       o.secureSetFilter(search_criteria)
    else:
