@@ -1,5 +1,8 @@
 import re
 from typing import Any, Dict, List, Optional, Union
+from kernel.field import *
+from logger import logger
+from pprint import pprint
 
 
 class ConditionASTNode:
@@ -14,14 +17,26 @@ class ConditionExprNode(ConditionASTNode):
    Represents a terminal expression node comparing a field against a value.
    """
 
-   def __init__(self, field_name: str, op: str, value: Any, negate: bool = False):
-      self.field_name = field_name
+   def __init__(self, fld_obj: Any, op: str, value: Any, negate: bool = False):
+      self.field = fld_obj
       self.op = op.upper() if op else "="
       self.value = value
       self.negate = negate
 
    def __repr__(self) -> str:
-      return f"ConditionExprNode(field='{self.field_name}', op='{self.op}', val={repr(self.value)}, negate={self.negate})"
+      return f"ConditionExprNode(field='{self.field.name}', op='{self.op}', val={repr(self.value)}, negate={self.negate})"
+
+   def to_dict(self):
+      return({
+         "type": "Condition",
+         "field": self.field.name,
+         "fldobj": self.field,
+         "op": self.op,
+         "value": self.value,
+        # "is_literal": self.is_literal,
+         "negate": self.negate
+      })
+
 
 
 class ConditionLogicalNode(ConditionASTNode):
@@ -40,6 +55,13 @@ class ConditionLogicalNode(ConditionASTNode):
    def __repr__(self) -> str:
       return f"ConditionLogicalNode({self.logical_op}, children={self.children})"
 
+   def to_dict(self):
+      return {
+         "type": "Logical",
+         "op": self.logical_op,
+         "children": [child.to_dict() for child in self.children]
+      }
+
 
 def _tokenize_value_string(val_str: str, is_date_field: bool) -> List[str]:
    """
@@ -52,7 +74,10 @@ def _tokenize_value_string(val_str: str, is_date_field: bool) -> List[str]:
    i = 0
 
    # Regex pattern to match unquoted timestamp patterns like 2026-06-01 10:23:44
-   date_pattern = re.compile(r"^(!|>=|<=|>|<|=)?\d{4}-\d{2}-\d{2}\s+\d{2}:\d{2}:\d{2}")
+   date_patlst=[
+    re.compile(r"^(!|>=|<=|>|<|=)?\d{4}-\d{2}-\d{2}\s+\d{2}:\d{2}:\d{2}"),
+    re.compile(r"^(!|>=|<=|>|<|=)?\d{1,2}.\d{1,2}.\d{2,4}\s+\d{2}:\d{2}:\d{2}")
+   ]
 
    while i < length:
       # Skip leading whitespace
@@ -63,12 +88,16 @@ def _tokenize_value_string(val_str: str, is_date_field: bool) -> List[str]:
 
       # Check for unquoted date/time string if field is Date/MDate
       if is_date_field:
-         match = date_pattern.match(val_str[i:])
-         if match:
-            token_str = match.group(0)
-            tokens.append(token_str)
-            i += len(token_str)
-            continue
+         is_date_field_handled=False
+         for date_pattern in date_patlst:
+            match = date_pattern.match(val_str[i:])
+            if match:
+               token_str = match.group(0)
+               tokens.append(token_str)
+               i += len(token_str)
+               is_date_field_handled=True
+               break
+         if (is_date_field_handled): continue
 
       char = val_str[i]
 
@@ -132,43 +161,47 @@ def _parse_single_block(block: str, fld_obj: Any) -> ConditionExprNode:
 
    if has_wildcards:
       if op is not None:
-         raise ValueError(f"Invalid condition construct: Operators like '{op}' are not allowed with wildcards in '{block}'")
+         raise ValueError(f"Invalid condition construct: " \
+                           "Operators like '{op}' are not " \
+                           "allowed with wildcards in '{block}'")
       op = "LIKE"
    elif op is None:
       op = "="
 
    # 5. Apply prepConditionString if available on field object
-   if hasattr(fld_obj, "prepConditionString") and callable(fld_obj.prepConditionString):
-      expr = fld_obj.prepConditionString(expr)
+   if (hasattr(fld_obj, "prepConditionBlock") and 
+       callable(fld_obj.prepConditionBlock)):
+      expr = fld_obj.prepConditionBlock(expr)
 
-   # Determine backend field reference name
-   backend_name = getattr(fld_obj, "backendname", None)
-
-   return ConditionExprNode(field_name=backend_name, op=op, value=expr, negate=negate)
+   return ConditionExprNode(fld_obj=fld_obj, op=op, value=expr, negate=negate)
 
 
 def _parse_field_value_expression(fld_name: str, val: Union[str, List[Any]], fld_obj: Any) -> ConditionASTNode:
    """
    Parses a single field's condition value (List or String) into an AST structure.
    """
-   backend_name = getattr(fld_obj, "backendname", fld_name)
-
    # Check if field is Date or MDate type
    fld_class_name = fld_obj.__class__.__name__ if fld_obj else ""
-   is_date_field = "Date" in fld_class_name
+   is_date_field = isinstance(fld_obj,FieldDate) # in fld_class_name
 
    # Case 1: Value is a List -> OR-connected '=' conditions
    if isinstance(val, list):
       or_node = ConditionLogicalNode("OR")
       for item in val:
          item_val = item
-         if hasattr(fld_obj, "prepConditionString") and callable(fld_obj.prepConditionString):
-            item_val = fld_obj.prepConditionString(item_val)
-         or_node.add_child(ConditionExprNode(field_name=backend_name, op="=", value=item_val, negate=False))
-      return or_node if len(or_node.children) > 1 else (or_node.children[0] if or_node.children else None)
+         if (hasattr(fld_obj, "prepConditionBlock") and \
+             callable(fld_obj.prepConditionBlock)):
+            item_val = fld_obj.prepConditionBlock(item_val)
+         or_node.add_child(ConditionExprNode(fld_obj=fld_obj, 
+                                             op="=", value=item_val, negate=False))
+      return or_node if (len(or_node.children) > 1) else (or_node.children[0] \
+                         if (or_node.children) else None)
 
    # Case 2: Value is a String
    elif isinstance(val, str):
+      if (hasattr(fld_obj, "prepConditionString") and \
+          callable(fld_obj.prepConditionString)):
+         val = fld_obj.prepConditionString(val)
       # Split by " AND " first
       and_segments = val.split(" AND ")
       and_node = ConditionLogicalNode("AND")
@@ -195,7 +228,7 @@ def _parse_field_value_expression(fld_name: str, val: Union[str, List[Any]], fld
          return and_node
 
    # Case 3: Fallback for scalar non-string values
-   return ConditionExprNode(field_name=backend_name, op="=", value=val, negate=False)
+   return ConditionExprNode(fld_obj=fld_obj, op="=", value=val, negate=False)
 
 
 def build_ast(filterExpr: List[List[Dict[str, Any]]], parent_fields: Dict[str, Any]) -> Optional[ConditionASTNode]:
@@ -227,6 +260,7 @@ def build_ast(filterExpr: List[List[Dict[str, Any]]], parent_fields: Dict[str, A
 
          for fld_key, fld_val in dict_cond.items():
             if fld_key not in parent_fields:
+               print("WARN: skip expression key %s" % fld_key)
                continue
 
             fld_obj = parent_fields[fld_key]
@@ -251,3 +285,16 @@ def build_ast(filterExpr: List[List[Dict[str, Any]]], parent_fields: Dict[str, A
       return level1_and_node
 
    return None
+
+
+class ConditionalAST():
+   def __init__(self,filterExpr,fieldmap):
+      self._AST=build_ast(filterExpr,fieldmap)
+
+   def getAST(self):
+      return(self._AST)
+
+
+
+__all__ = [k for k in locals() if k.startswith("Condition")]
+

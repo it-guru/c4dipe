@@ -1,3 +1,6 @@
+import sys
+sys.dont_write_bytecode = True
+
 
 from kernel.condition import *
 from kernel.field import *
@@ -25,20 +28,63 @@ search_criteria = [ # Level 1 (AND)
     }
   ]
 ]
+search_criteria = [ # Level 1 (AND)
+  [ # Level 2 (OR)
+    {
+     "name": "!*Egon*",
+     "mdate": ">10.03.1999 10:00:00"
+    },
+    {
+     "name": "Dies ist ein test",
+     "mdate": ">1972-03-10 17:33:00"
+    },
+    {
+        "zipcode": ['1234', '5678', '7890'],# List of constants (=) with OR
+        "mdate": ">10.03.1972 10:00:00 AND <1972-03-10 17:33:00"
+    }
+  ]
+]
 
 fieldmap={
-   "mdate":{ "type":"Date" },
-   "cpucount":{ "type":"Number" }
+    "fullname": FieldText(
+                   name="fullname"
+                ),
+    "nameneg":     FieldText(
+                   name="nameneg"
+                ),
+    "basefeld":     FieldText(
+                   name="basefeld"
+                ),
+    "cpucount":     FieldText(
+                   name="cpucount"
+                ),
+    "role":     FieldText(
+                   name="role"
+                ),
+    "ffeld":     FieldText(
+                   name="ffeld"
+                ),
+    "zipcode":     FieldText(
+                   name="zipcode"
+                ),
+    "street":     FieldText(
+                   name="street"
+                ),
+    "name":     FieldText(
+                   name="name"
+                ),
+     "mdate":   FieldMDate()
 }
-
-
-ast=ConditionalAST(self,self._CurrentFilterExpr)
 
 
 
 print("iquery=%s" % json.dumps(search_criteria,indent=2))
-print("astree=%s" % json.dumps(ast.to_dict(),indent=2))
 
+ast=ConditionalAST(search_criteria,fieldmap)
+
+print("astree=%s" % json.dumps(ast.getAST().to_dict(),indent=2))
+
+exit(0)
 ASTprocessor=ConditionSQL()
 wherestr,qparam=ASTprocessor.compile(ast.getAST())
 print("where=%s" % wherestr)
