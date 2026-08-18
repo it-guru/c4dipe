@@ -5,7 +5,8 @@ class FieldURL(Field):
                 self, 
                 **param
                ):
-      
+      param["backendname"]=None
       super().__init__(**param)
+      self.backendname=None
 
 

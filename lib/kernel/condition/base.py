@@ -289,7 +289,6 @@ def build_ast(filterExpr: List[List[Dict[str, Any]]], parent_fields: Dict[str, A
 
 class ConditionalAST():
    def __init__(self,filterExpr,fieldmap):
-      pprint(filterExpr)
       self._AST=build_ast(filterExpr,fieldmap)
 
    def getAST(self):

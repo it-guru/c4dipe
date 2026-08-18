@@ -1,10 +1,10 @@
 import json
 
 class dbRecord(dict):
-   def __init__(self,initraw=None):
+   def __init__(self,initraw,view:list):
       super().__init__()
       self._raw={}
-      self._keys=['fullname','modifydate']
+      self._keys=view
 
       if (initraw):
          self._raw=initraw

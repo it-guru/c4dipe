@@ -6,6 +6,8 @@ class DataObj:
        self._FieldOrder=[]
        self._GroupOrder=[]
        self._CurrentFilterExpr=[[]]
+       self._CurrentView=[]
+       self._CurrentOrder=[]
 
     def setFilter(self,filterExpr):
        self._CurrentFilterExpr=filterExpr
@@ -15,6 +17,24 @@ class DataObj:
        return(self.setFilter(filterExpr))
 
         
+    def setCurrentView(self,view): 
+       if (isinstance(view,list)):
+          self._CurrentView=list
+       if (isinstance(view,str)):
+          if (view == "(ALL)"):
+             self._CurrentView=self._FieldOrder
+          else:
+             self._CurrentView=view.split(",")
+       return(self._CurrentView)
+
+    def setCurrentOrder(self,order): 
+       if (isinstance(order,list)):
+          self._CurrentOrder=list
+       if (isinstance(order,str)):
+          self._CurrentView=order.split(",")
+       return(self._CurrentOrder)
+
+
     def addFields(self,*fldObjList): 
        for fldObj in fldObjList:
           fldObj._parent=weakref.ref(self)
@@ -34,8 +54,6 @@ class DataObj:
              for group in fldObj.group:
                 if group not in self._GroupOrder:
                    self._GroupOrder.append(group)
-
-
 
 
 

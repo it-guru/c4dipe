@@ -28,17 +28,12 @@ class BaseContact(DataObjSQLDB):
           FieldText(  
              name="name"
           ),
-          FieldURL(
-             name="urlofcurrentrec"
+          FieldText(  
+             name="grpid"
           ),
-          FieldText(
-             name="surname",
-             insertafter="name"
-          ),
-          FieldText(
-             name="givenname",
-             insertafter="xname"
-          ),
+#          FieldURL(
+#             name="urlofcurrentrec"
+#          ),
           FieldMDate()
        )
 
@@ -51,13 +46,25 @@ class BaseContact(DataObjSQLDB):
 #       return(super().secureSetFilter(search_criteria))
 
 
-    def getDictList(self,view:str="ALL",filterExpr=None):
+    def getDictList(self,view=None,filterExpr=None):
+
+       if (not view is None):
+          self.setCurrentView(view) 
 
        self._CurrentAST=ConditionalAST(self._CurrentFilterExpr,self._Field)
        ASTprocessor=ConditionSQL()
        wherestr,qparam=ASTprocessor.compile(self._CurrentAST.getAST())
 
-       self._lastSQL="select * from grp where "+wherestr+" limit 10"
+       selLst=[]
+       for fldname in self._CurrentView: 
+          backendname=self._Field[fldname].backendname
+          if (not backendname is None):
+             aliasname=fldname
+             selLst.append(backendname+' AS "'+aliasname+'"')
+
+       self._lastSQL="select "+", ".join(selLst)+" "\
+                     "from grp "+\
+                     "where "+wherestr+" limit 10"
        logger.debug("SQL: "+pformat(self._lastSQL))
        result={}
        result["data"]=[]
@@ -141,7 +148,7 @@ class BaseContact(DataObjSQLDB):
           mrow["_RECNO"]=self._RECNO
 
           # pack it in a dbRecord
-          dbRow=dbRecord(mrow)
+          dbRow=dbRecord(mrow,self._CurrentView)
           return(dbRow)
 
        return(None)

@@ -94,6 +94,14 @@ def do_dbcall(AppConfig,module,dataobj,method):
    auth_key = request.headers.get('X-AUTHKEY')
 
    param=request.values.to_dict()
+
+   CurrentView="(ALL)"
+
+   if ("_CurrentView" in param):
+      CurrentView=param["_CurrentView"]
+      del param["_CurrentView"]
+      
+
    search_criteria=[
       [
         param 
@@ -107,7 +115,8 @@ def do_dbcall(AppConfig,module,dataobj,method):
    else:
       o.setFilter(search_criteria)
 
-  
+   o.setCurrentView(CurrentView); 
+   #o.setCurrentOrder("fullname,grpid,mdate"); 
    result=o.getDictList() 
                    
    return jsonify({"status":"success","exitcode": 0, "result" : result})

@@ -11,7 +11,6 @@ class Field(dict):
       self._parent=None
       self["name"]=self.name
       self["type"]=type(self).__name__
-      self["backendname"]=self.backendname
 
    def prepConditionString(self,condStr: str) -> str :
       #print("prepConditionString %s : '%s'" % (self.name,condStr) )
