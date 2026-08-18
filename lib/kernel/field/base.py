@@ -12,4 +12,5 @@ class Field(dict):
       self["name"]=self.name
       self["type"]=type(self).__name__
 
-
+   def prepConditionString(condStr: str) -> str
+      return(condStr)
