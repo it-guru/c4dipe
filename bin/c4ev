@@ -39,14 +39,16 @@ def main():
                        help="run event in verbos mode")
    args = parser.parse_args()
 
-   print("args are parsed")
-   pprint(args)
+   #print("args are parsed")
+   #pprint(args)
 
-   print("instance obj")
-   o=getEventObject("base.job20sek")
+   #print("instance obj")
+   o=getEventObject(args.evname)
 
    if (o):
       o.run()
+   else:
+      exit(1)
 
 
 if __name__ == "__main__":

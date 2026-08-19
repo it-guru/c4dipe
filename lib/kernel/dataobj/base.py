@@ -56,6 +56,44 @@ class DataObj:
                    self._GroupOrder.append(group)
 
 
+    def do():
+        print("WARN: not derevied method call do():")
+        return(False)
+
+    def getDictList(self,view=None,filterExpr=None):
+
+       if (not view is None):
+          self.setCurrentView(view) 
+
+#       self._CurrentAST=ConditionalAST(self._CurrentFilterExpr,self._Field)
+#       ASTprocessor=ConditionSQL()
+#       wherestr,qparam=ASTprocessor.compile(self._CurrentAST.getAST())
+#
+#       selLst=[]
+#       for fldname in self._CurrentView: 
+#          backendname=self._Field[fldname].backendname
+#          if (not backendname is None):
+#             aliasname=fldname
+#             selLst.append(backendname+' AS "'+aliasname+'"')
+#
+#       self._lastSQL="select "+", ".join(selLst)+" "\
+#                     "from grp "+\
+#                     "where "+wherestr+" limit 10"
+#       logger.debug("SQL: "+pformat(self._lastSQL))
+       result={}
+       result["data"]=[]
+     
+       if (self.do()):
+          while True:
+            row=self.get_next()
+            if row is None: break
+            result["data"].append(dict(row))
+       else:
+          print("DB Error: %s" % self.lastError())
+
+       return(result["data"])
+
+
 
 
     def insert_record(self, record_id: int, data: dict) -> bool:
@@ -69,4 +107,8 @@ class DataObj:
     def delete_record(self, record_id: int) -> bool:
         print(f"Datensatz {record_id} erfolgreich geloescht.")
         return True
+
+    def lastError(self):
+       return(self._lastError)
+
 
