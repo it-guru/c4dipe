@@ -1,0 +1,59 @@
+#!/usr/bin/env python3
+import sys
+sys.dont_write_bytecode = True
+
+import os
+import importlib
+from pathlib import Path
+script_dir = Path(__file__).resolve().parent
+lib_dir = script_dir / '..' / 'lib'
+sys.path.insert(0, str(lib_dir))
+sys.path.insert(1, str(script_dir))
+
+
+# 1. Add project root to sys.path to allow importing 'config'
+# (Assumes bin/ is a subfolder of your main project root)
+PROJECT_DIR = os.path.abspath(
+    os.path.join(os.path.dirname(__file__), "..")
+)
+if PROJECT_DIR not in sys.path:
+  sys.path.insert(0, PROJECT_DIR)
+#######################################################################
+import os
+import json
+import time
+import ctypes
+import signal
+import secrets
+from config import *
+from logger import *
+from pprint import pprint
+from kernel import *
+import argparse
+#######################################################################
+
+def main():
+   parser = argparse.ArgumentParser(description="c4ev - Event executor")
+   parser.add_argument("evname", help="Event Name")
+   parser.add_argument("-v","--verbose",action="store_true",
+                       help="run event in verbos mode")
+   args = parser.parse_args()
+
+   print("args are parsed")
+   pprint(args)
+
+   print("instance obj")
+   o=getEventObject("base.job20sek")
+
+   if (o):
+      o.run()
+
+
+if __name__ == "__main__":
+   main()
+
+
+
+
+
+

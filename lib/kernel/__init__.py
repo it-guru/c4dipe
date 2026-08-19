@@ -3,10 +3,13 @@ import sys
 from pathlib import Path
 import importlib.util
 import types
+import re
 from pprint import pprint
+from logger import logger
 from config import config
 
-__all__ = ['funktion1', 'ist_pid_aktiv', 'importToNamespace','getModuleObject']
+__all__ = ['funktion1','ist_pid_aktiv','importToNamespace','getModuleObject',
+           'getEventObject']
 
 def funktion1():
     print("Ich wurde automatisch exportiert!")
@@ -77,7 +80,14 @@ def importToNamespace(file_path,target_namespace_str):
 
 
 
-def getModuleObject(module: str, dataobj: str):
+def getModuleObject(module: str, dataobj: str=None):
+
+  if (dataobj is None):
+     match=re.match(r"^([^./]+)[./]([^./]+)$",module)
+     if (match):
+        module=match.group(1)
+        dataobj=match.group(2)
+     
 
   search_paths = []
   base_dir=config["GLOBAL"]["BASE_DIR"]
@@ -92,7 +102,6 @@ def getModuleObject(module: str, dataobj: str):
 
   target_file = next((p for p in search_paths if p.is_file()), None)
 
-  #print("target file=%s" % target_file)
   if not target_file:
     return None
 
@@ -106,7 +115,6 @@ def getModuleObject(module: str, dataobj: str):
        mod = sys.modules[mod_name]
        cls = getattr(mod, class_name)
        return cls()
-
 
     spec = importlib.util.spec_from_file_location(mod_name, target_file)
     if spec is None or spec.loader is None:
@@ -123,5 +131,58 @@ def getModuleObject(module: str, dataobj: str):
   except Exception as e:
     print(f"[ERROR] Failed to load '{class_name}' from '{target_file}': {e}")
     return None
+
+
+def getEventObject(evname: str):
+   module=None
+   evfile=None
+   match=re.match(r"^([^./]+)[./]([^./]+)$",evname)
+   if (match):
+      module=match.group(1)
+      evfile=match.group(2)
+
+   #print("evmodule=%s evfile=%s" % (module,evfile))
+   #######################################################################
+   search_paths = []
+   base_dir=config["GLOBAL"]["BASE_DIR"]
+   modpath_str = config.get("GLOBAL", {}).get("MOD_PATH", "")
+   raw_paths = [p.strip() for p in modpath_str.split(":") if p.strip()]
+   for raw_path in raw_paths:
+      if not raw_path.startswith("/"):
+         dir_path = Path(base_dir) / raw_path
+      else:
+         dir_path = Path(raw_path)
+      search_paths.append(dir_path / "mod" / module / "event" / f"{evfile}.py")
+   #pprint(search_paths) 
+   target_file = next((p for p in search_paths if p.is_file()), None)
+  
+   if not target_file:
+     return None
+   #######################################################################
+  
+   mod_name = f"dyn_ev_{module}_{evfile}"
+   class_name = (f"Event")
+  
+   try:
+     if mod_name in sys.modules:
+        mod = sys.modules[mod_name]
+        cls = getattr(mod, class_name)
+        return cls()
+  
+     spec = importlib.util.spec_from_file_location(mod_name, target_file)
+     if spec is None or spec.loader is None:
+       return None
+  
+     mod = importlib.util.module_from_spec(spec)
+     sys.modules[mod_name] = mod
+     spec.loader.exec_module(mod)
+  
+     cls = getattr(mod, class_name)
+  
+     return cls()
+  
+   except Exception as e:
+     print(f"[ERROR] Failed to load '{class_name}' from '{target_file}': {e}")
+     return None
 
 
