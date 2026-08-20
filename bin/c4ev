@@ -46,10 +46,12 @@ def main():
    o=getEventObject(args.evname)
 
    if (o):
-      o.run()
+      bk=o.run()
+      pprint(bk)
    else:
       exit(1)
 
+   exit(0)
 
 if __name__ == "__main__":
    main()

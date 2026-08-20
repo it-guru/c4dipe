@@ -133,13 +133,12 @@ def getModuleObject(module: str, dataobj: str=None):
     return None
 
 
-def getEventObject(evname: str):
-   module=None
-   evfile=None
-   match=re.match(r"^([^./]+)[./]([^./]+)$",evname)
-   if (match):
-      module=match.group(1)
-      evfile=match.group(2)
+def getEventObject(module: str,evfile: str=None):
+   if (not evfile):
+      match=re.match(r"^([^./]+)[./]([^./]+)$",module)
+      if (match):
+         module=match.group(1)
+         evfile=match.group(2)
 
    #print("evmodule=%s evfile=%s" % (module,evfile))
    #######################################################################

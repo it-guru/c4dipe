@@ -27,7 +27,6 @@ class DynamicScheduler(threading.Thread):
     self.auth_key = config["GLOBAL"]["X-AUTHKEY"]
     self.http_agent = urllib.request
 
-    # Dictionary tracking modification timestamps: { "file_path_str": float_mtime }
     self._file_mtimes = {}  # type: Dict[str, float]
     self._jobs = []  # type: List[dict]
     self._executor = ThreadPoolExecutor(
@@ -181,7 +180,6 @@ class DynamicScheduler(threading.Thread):
           logger.error(f"Unexpected error reading {file_path}: {e}")
       self._jobs = new_jobs
       self._file_mtimes = current_mtimes
-      print("scheduler loaded")
       logger.info(
           f"Reloaded cron schedules across {len(current_mtimes)} file(s)."
           f" Total active jobs: {len(self._jobs)}"
@@ -213,14 +211,13 @@ class DynamicScheduler(threading.Thread):
 
           with opener.open(req, timeout=5) as response:
             result = response.read().decode("utf-8")
-            logger.debug(
-                f"[{job_name} ({source_file})] {method} {url} ->"
-                f" {response.status}: {result[:50]}"
-            )
+            logger.debug(f"[{job_name} ({source_file})]:")
+            logger.debug(f" {method} {url} ->")
+            logger.debug(f" result: {response.status}: {result[:10]}")
 
         except urllib.error.HTTPError as e:
-          logger.warning(
-              f"[{job_name} ({source_file})] HTTP {e.code} ({e.reason}) for {url}"
+          logger.warning(f"[{job_name} ({source_file})] HTTP {e.code} "\
+                          "({e.reason}) for {url}"
           )
         except (
             urllib.error.URLError,

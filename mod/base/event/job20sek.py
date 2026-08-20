@@ -24,7 +24,8 @@ class Event(event):
       o.setFilter(search_criteria)
 
       result=o.getDictList("fullname,mdate,name,urlofcurrentrec,virtual,groups")
-      pprint(result)
+
+      return({"status": "success","exitcode": 0,"result": result})
 
      
 

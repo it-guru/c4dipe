@@ -260,7 +260,7 @@ def build_ast(filterExpr: List[List[Dict[str, Any]]], parent_fields: Dict[str, A
 
          for fld_key, fld_val in dict_cond.items():
             if fld_key not in parent_fields:
-               print("WARN: skip expression key %s" % fld_key)
+               logger.debug("WARN: skip expression key %s" % fld_key)
                continue
 
             fld_obj = parent_fields[fld_key]
