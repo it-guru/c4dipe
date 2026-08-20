@@ -12,6 +12,7 @@ import resource
 import urllib.request
 import urllib.error
 import json
+import dbpool
 
 
 class W6Flask(Flask):
@@ -25,10 +26,11 @@ class W6Flask(Flask):
          "timer": time.time()
       }
       self.UniqueID_lck=threading.Lock()
+      self.teardown_appcontext(self._cleanup_db_transactions)
+
+   def _cleanup_db_transactions(self, exception=None):
+      dbpool.closeAllOpenTransactionsInCurrentThread(exception)
       
-
-
-
    def load_plugins(self):
       if self.plugdir:
          for base_dir in self.W6AppPath:
@@ -57,66 +59,6 @@ class W6Flask(Flask):
          print("no plugdir!")
 
 
-#   def finishLabeledThread(self, handlerName):
-#      with self.W6ShmLock:
-#         W5Shm=getW6Shm(self.W6Shm,self.W6ShmSize)
-#         W5Shm[handlerName]["thread_state"]="finished"
-#         W5Shm[handlerName]["thread_end"]=time.time()
-#         setW6Shm(self.W6Shm,self.W6ShmSize,W5Shm)
-#
-#
-#   def invokeLabeledThread(self, handleFunc, handlerName):
-#      with self.W6ShmLock:
-#         W5Shm=getW6Shm(self.W6Shm,self.W6ShmSize)
-#         if handlerName in W5Shm:
-#            if (ist_pid_aktiv(W5Shm[handlerName]["thread_pid"])):
-#               if (not(not W5Shm[handlerName]["thread_state"] or
-#                       W5Shm[handlerName]["thread_state"] != "running")):
-#                  if (W5Shm[handlerName]["thread_pid"] == os.getpid()):
-#                     aThreads=threading.enumerate()
-#                     t=None
-#                     for tChk in aThreads:
-#                        if (tChk.name==handlerName):
-#                           t=tChk
-#                     if (t):
-#                        if (t.is_alive()):
-#                           return jsonify({
-#                               "status": "already_running",
-#                               "thread_id": t.ident,
-#                               "exitcode": 0
-#                           })
-#                  else:
-#                     return jsonify({
-#                         "status": "already_running_anywhere",
-#                         "thread_pid": W5Shm[handlerName]["thread_pid"],
-#                         "exitcode": 0
-#                     })
-#     
-#         t=threading.Thread(
-#              name=handlerName,
-#              target=handleFunc,
-#              args=(self,handlerName),
-#              daemon=True
-#         )
-#         t.start()
-#        
-#         W5Shm[handlerName]={
-#            "thread_start": time.time(),
-#            "thread_end": None,
-#            "thread_pid": os.getpid(),
-#            "thread_id": t.ident,
-#            "thread_state": "running"
-#         } 
-#         setW6Shm(self.W6Shm,self.W6ShmSize,W5Shm)
-#      return jsonify({
-#         "status":"success started",
-#         "thread_id": t.ident,
-#         "exitcode": 0
-#      })
-#
-
-
-
    def closeAllFileDescriptors(self):
       soft_limit, _ = resource.getrlimit(resource.RLIMIT_NOFILE)
       for fd in range(3, soft_limit):
@@ -125,6 +67,8 @@ class W6Flask(Flask):
              os.close(fd)
          except OSError:
              pass
+      if hasattr(dbpool._thread_local, "conns"):
+        dbpool._thread_local.conns = {}
 
    def resetAllSignalHandler(self):
       for sig in range(1, signal.NSIG):

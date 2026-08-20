@@ -14,21 +14,19 @@ from pprint import pformat, pprint
 class DataObjSQLDB(DataObj):
     def __init__(self):
         super().__init__()
-#        self.db_connection_string = db_connection_string
-        self.is_connected = False
-#        print(f"init with connectstr {db_connection_string}.")
-        
-        self.records = {}
+        self.is_connected         = False
+        self._currentResultSet    = None
+        self._primaryBackendTable = None
 
     def _connect(self):
        if (not self.is_connected):
-          self.db=dbpool.get_engine(self._configSection) 
+          #self.db=dbpool.get_engine(self._configSection) 
+          self.db=dbpool.get_connection(self._configSection) 
           self.is_connected = True
        return(self.is_connected)
-       
-#       print("init in BaseUserContact %s" % json.dumps(config[self._configSection]))
 
-#       self.records = {}
+    def get_from_sql(self) -> str:
+       return(self._primaryBackendTable)
 
     def do(self):
        self._CurrentAST=ConditionalAST(self._CurrentFilterExpr,self._Field)
@@ -36,73 +34,55 @@ class DataObjSQLDB(DataObj):
        wherestr,qparam=ASTprocessor.compile(self._CurrentAST.getAST())
 
        selLst=[]
+       CurrentDepend=set()
+       for fldname in self._Field:
+          if (self._Field[fldname].selectfix):
+             CurrentDepend.add(fldname)
        for fldname in self._CurrentView:
-          backendname=self._Field[fldname].backendname
-          if (not backendname is None):
-             aliasname=fldname
-             selLst.append(backendname+' AS "'+aliasname+'"')
+          if (fldname in self._Field):
+             backendname=self._Field[fldname].backendname
+             if (not backendname is None):
+                aliasname=fldname
+                selLst.append(backendname+' AS "'+aliasname+'"')
+             if (self._Field[fldname].depend):
+                for dfldname in self._Field[fldname].depend:
+                   if (dfldname in self._Field):
+                      CurrentDepend.add(dfldname)   
+       for dfldname in CurrentDepend:
+          if (not dfldname in self._CurrentView):
+             backendname=self._Field[dfldname].getBackendName("select")
+             if (not backendname is None):
+                aliasname=dfldname
+                selLst.append(backendname+' AS "'+aliasname+'"')
 
-       self._lastSQL="select "+", ".join(selLst)+" "\
-                     "from grp "+\
-                     "where "+wherestr+" limit 5"
+       selectstr=', '.join(selLst) if (selLst) else "*"
+
+
+       sqlparts = [
+           f"select {selectstr}",
+           f"from {self.get_from_sql()}",
+           f"where {wherestr}" if wherestr else None,
+           "limit 5",
+       ]
+
+       self._lastSQL=" ".join(filter(None,sqlparts))
        logger.debug("SQL: "+pformat(self._lastSQL))
+       #pprint(self._lastSQL)
        result={}
        result["data"]=[]
 
-       if (self.sql_do(self._lastSQL,qparam)):
+       if (self.do_sql(self._lastSQL,qparam)):
           return(True)
        else:
-          print("DB Error: %s" % o.lastError())
+          print("DB Error:(%s) %s" % (self._lastSQL,self.lastError()))
 
 
 
-    def sql_get_next(self):
-       if (not self._currentResultSet is None):
-          row = self._currentResultSet.fetchone()
-          if (not row is None):
-             self._RECNO+=1
-             if hasattr(row, "_mapping"):
-                return dict(row._mapping)
-             return(dict(row))
-          else:
-             return(None)
-       else:
-          print("ERROR: call sql_get_next without self._currentResultSet")
-       return(None)
-
-
-
-    def get_next(self):
-       row=self.sql_get_next()
-       if (row is not None):
-          mrow={}
-          for k,v in row.items():
-             if isinstance(v, datetime):
-                if v is None:
-                   mapped_row[k]=v
-                elif v.tzinfo is None:
-                   mrow[k]=v.replace(tzinfo=timezone.utc).strftime("%Y-%m-%d %H:%M:%S")
-                else:
-                   mrow[k]=v.astimezone(timezone.utc).strftime("%Y-%m-%d %H:%M:%S")
-             elif isinstance(v, bytes):
-                mrow[k]="[bytes]"
-             else:
-                mrow[k]=v
-          # add some internal _ Entries
-          mrow["_RECNO"]=self._RECNO
-
-          # pack it in a dbRecord
-          dbRow=dbRecord(mrow,self._CurrentView)
-          return(dbRow)
-
-       return(None)
-
-
-    def sql_do(self,cmd,param):
+    def do_sql(self,cmd,param):
        if (self._connect()):
           try:
              query=text(cmd)
-             pprint(query)
+             #pprint(cmd)
              self._currentResultSet = self.db.execute(query,param)
              self._lastError=None
              self._RECNO=0
@@ -118,6 +98,55 @@ class DataObjSQLDB(DataObj):
           self._lastError="Backend not connected"
 
        return(False)
+
+
+
+
+    def get_next_sql(self):
+       if (not self._currentResultSet is None):
+          row = self._currentResultSet.fetchone()
+          if (not row is None):
+             self._RECNO+=1
+             if hasattr(row, "_mapping"):
+                return dict(row._mapping)
+             return(dict(row))
+          else:
+             return(None)
+       else:
+          print("ERROR: call get_next_sql without self._currentResultSet")
+       return(None)
+
+
+
+    def get_next(self):
+       row=self.get_next_sql()
+       if (row is not None):
+          mrow={}
+          for k,v in row.items():
+             if isinstance(v, datetime):
+                if v is None:
+                   mapped_row[k]=v
+                elif v.tzinfo is None:
+                   mrow[k]=v.replace(tzinfo=timezone.utc).strftime(
+                             "%Y-%m-%d %H:%M:%S")
+                else:
+                   mrow[k]=v.astimezone(timezone.utc).strftime(
+                             "%Y-%m-%d %H:%M:%S")
+             elif isinstance(v, bytes):
+                mrow[k]="[bytes]"
+             else:
+                mrow[k]=v
+          # add some internal _ Entries
+          mrow["_RECNO"]=self._RECNO
+
+          # pack it in a dbRecord
+          dbRow=dbRecord(mrow,self._Field,self._CurrentView)
+          dbRow._parent=self
+          return(dbRow)
+
+       return(None)
+
+
 
     def insert_record(self, record_id: int, data: dict) -> bool:
         if record_id in self.records:

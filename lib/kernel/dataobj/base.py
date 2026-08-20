@@ -54,7 +54,18 @@ class DataObj:
              for group in fldObj.group:
                 if group not in self._GroupOrder:
                    self._GroupOrder.append(group)
+       for fldObj in fldObjList:
+          fldObj.__2nd__init__()
 
+    def getIdField(self):
+       for fldObj in self._Field.values():
+           if (fldObj["type"] == "FieldId"):
+              return(fldObj)
+       return(None) 
+
+    def getIdFieldName(self):
+       fldObj=self.getIdField()
+       return(fldObj.name if (fldObj) else None)
 
     def do():
         print("WARN: not derevied method call do():")
@@ -87,7 +98,8 @@ class DataObj:
           while True:
             row=self.get_next()
             if row is None: break
-            result["data"].append(dict(row))
+            #result["data"].append(dict(row))
+            result["data"].append(row)
        else:
           print("DB Error: %s" % self.lastError())
 

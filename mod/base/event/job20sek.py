@@ -5,11 +5,11 @@ from kernel import *
 
 class Event(event):
    def __init__(self):
-      print(f"Construct Event in {__file__}")
+      #print(f"Construct Event in {__file__}")
       super().__init__()
 
    def run(self):
-      print(f"run {__file__}")
+      #print(f"run {__file__}")
       o=getModuleObject("base.contact")
       search_criteria=[
          [
@@ -19,11 +19,11 @@ class Event(event):
          ]
       ]
 
-      pprint(search_criteria)
+      #pprint(search_criteria)
 
       o.setFilter(search_criteria)
 
-      result=o.getDictList("fullname,mdate,name")
+      result=o.getDictList("fullname,mdate,name,urlofcurrentrec,virtual,groups")
       pprint(result)
 
      
