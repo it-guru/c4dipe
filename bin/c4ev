@@ -25,22 +25,25 @@ import time
 import ctypes
 import signal
 import secrets
-from config import *
 from logger import *
 from pprint import pprint
-from kernel import *
 import argparse
 #######################################################################
+__CONFIG__="DEFAULT"
 
 def main():
+   global __CONFIG__
    parser = argparse.ArgumentParser(description="c4ev - Event executor")
    parser.add_argument("evname", help="Event Name")
    parser.add_argument("-v","--verbose",action="store_true",
                        help="run event in verbos mode")
+   parser.add_argument("-c","--config",
+                       default='c4dipe',
+                       help="defines the config to load")
    args = parser.parse_args()
+   __CONFIG__=args.config
 
-   #print("args are parsed")
-   #pprint(args)
+   from kernel import getEventObject
 
    #print("instance obj")
    o=getEventObject(args.evname)

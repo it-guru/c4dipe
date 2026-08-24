@@ -16,7 +16,6 @@ class DataObjSQLDB(DataObj):
         super().__init__()
         self.is_connected         = False
         self._currentResultSet    = None
-        self._primaryBackendTable = None
 
     def _connect(self):
        if (not self.is_connected):
@@ -48,6 +47,10 @@ class DataObjSQLDB(DataObj):
                 for dfldname in self._Field[fldname].depend:
                    if (dfldname in self._Field):
                       CurrentDepend.add(dfldname)   
+                   else:
+                      raise(ValueError(
+                         f"invalid .depend '{dfldname}' in field '{fldname}'")
+                      )
        for dfldname in CurrentDepend:
           if (not dfldname in self._CurrentView):
              backendname=self._Field[dfldname].getBackendName("select")
@@ -67,7 +70,6 @@ class DataObjSQLDB(DataObj):
 
        self._lastSQL=" ".join(filter(None,sqlparts))
        logger.debug("SQL: "+pformat(self._lastSQL))
-       #pprint(self._lastSQL)
        result={}
        result["data"]=[]
 

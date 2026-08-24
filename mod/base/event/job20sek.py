@@ -11,6 +11,12 @@ class Event(event):
    def run(self):
       #print(f"run {__file__}")
       o=getModuleObject("base.contact")
+      if (o is None):
+         return({"status": "failed",
+           "exitcode": -1,
+           "exitmsg": "failed to instance base.contact"
+         })
+
       search_criteria=[
          [
            {

@@ -11,13 +11,12 @@ sys.path.insert(1, str(script_dir))
 
 
 import os
-from config import *
 import time
 import signal
 import secrets
-#import logging
 from logger import *
 import mmap
+import argparse
 from setproctitle import setproctitle
 from multiprocessing import Process, Lock
 
@@ -26,23 +25,17 @@ import urllib.error
 
 import gunicorn.app.base
 
-from scheduler import DynamicScheduler
 
 import http.client
 import socket
 
 from pprint import pprint
 
-#from W6Flask import W6Flask
+__CONFIG__="nix"
 
-
-# Globals
 
 
 W6InternalKey = secrets.token_hex(64)
-
-if ("X-AUTHKEY" in config["GLOBAL"]):
-   W6InternalKey = config["GLOBAL"]["X-AUTHKEY"]
 
 W6Server      = None
 W6App         = None
@@ -174,23 +167,41 @@ def normal_shutdown(signum,frame):
 
 
 if __name__ == '__main__':
-  W6CtrlPID=os.getpid();
+   W6CtrlPID=os.getpid();
 
-  signal.signal(signal.SIGTERM, normal_shutdown)
-  signal.signal(signal.SIGINT, normal_shutdown)
+   signal.signal(signal.SIGTERM, normal_shutdown)
+   signal.signal(signal.SIGINT, normal_shutdown)
 
-  W6Server=Process(target=invoke_W6Server_listener)
-  W6Server.daemon=True
-  W6ProcServer.append(W6Server)
-  W6Server.start()
 
-  W6App=Process(target=invoke_W6App_listener)
-  W6App.daemon=True
-  W6ProcServer.append(W6App)
-  W6App.start()
+   parser = argparse.ArgumentParser(description="c4diped - Process-Server")
+   parser.add_argument("-v","--verbose",action="store_true",
+                       help="run event in verbos mode")
+   parser.add_argument("-c","--config",
+                       help="defines the config to load")
+   args = parser.parse_args()
+   __CONFIG__=args.config
 
-  setproctitle("c4diped")
-  while True:
-     time.sleep(99)
+   from config import config
+   from scheduler import DynamicScheduler
+  
+
+   if ("X-AUTHKEY" in config["GLOBAL"]):
+      W6InternalKey = config["GLOBAL"]["X-AUTHKEY"]
+
+   print("fifi01")
+   W6Server=Process(target=invoke_W6Server_listener)
+   W6Server.daemon=True
+   W6ProcServer.append(W6Server)
+   W6Server.start()
+  
+   print("fifi02")
+   W6App=Process(target=invoke_W6App_listener)
+   W6App.daemon=True
+   W6ProcServer.append(W6App)
+   W6App.start()
+  
+   setproctitle("c4diped")
+   while True:
+      time.sleep(99)
 
 

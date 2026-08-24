@@ -182,6 +182,9 @@ def getEventObject(module: str,evfile: str=None):
   
    except Exception as e:
      print(f"[ERROR] Failed to load '{class_name}' from '{target_file}': {e}")
+     #traceback.print_exc()
+     #tb_str = traceback.format_exc()
+     #print(f"Detailierter Traceback:\n{tb_str}")
      return None
 
 

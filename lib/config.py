@@ -4,6 +4,7 @@ from configparser import ConfigParser
 import urllib.request
 import urllib.error
 import time
+import sys
 import secrets
 from pathlib import Path
 from logger import *
@@ -11,9 +12,10 @@ from pprint import pprint
 
 
 class AutoReloadConfigParser(dict):
-    def __init__(self, config_file="config.ini", ttl_seconds=1200):
+    def __init__(self,config_name="config", ttl_seconds=1200):
         super().__init__()
-        self.config_file = "/etc/%s" % config_file
+
+        self.config_file = "/etc/%s.ini" % config_name
         self.ttl_seconds = ttl_seconds
         self.last_loaded = 0
         self._parser = ConfigParser()
@@ -125,7 +127,10 @@ class AutoReloadConfigParser(dict):
 
 
 # Singleton-Instanz erzeugen
-config = AutoReloadConfigParser(config_file="SNowRepl.env", ttl_seconds=30)
+main_mod = sys.modules["__main__"]
+config_name = getattr(main_mod, "__CONFIG__", "noDEFAULT")
+
+config = AutoReloadConfigParser(config_name=config_name, ttl_seconds=30)
 config.read_with_includes()
 
 

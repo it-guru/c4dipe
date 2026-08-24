@@ -1,6 +1,6 @@
 class Field(dict):
    def __init__(self, **param):
-      self.name=param["name"]
+      self.name=param.get("name",None)
       self.backendname=None
       self.selectfix=False
 
@@ -19,7 +19,8 @@ class Field(dict):
       self.group=param["group"]
       self._initParam=param
       self._parent=None
-      self["name"]=self.name
+      if (self.name): 
+         self["name"]=self.name
       self["type"]=type(self).__name__
 
    def __2nd__init__(self):  # second pass init after 1st addFields loop
@@ -33,7 +34,9 @@ class Field(dict):
    def getBackendName(self,mode:str):
       if (self.backendname):
          return(self.backendname)
-      return(self.name)
+      if (self.name):
+         return(self.name)
+      return(None)
       
 
    def prepConditionString(self,condStr: str) -> str :
