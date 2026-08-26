@@ -1,5 +1,5 @@
 from .base import DataObj
-from sqlalchemy import text
+from sqlalchemy import text,select
 from sqlalchemy.exc import DBAPIError, SQLAlchemyError
 from dbRecord import dbRecord
 from kernel.condition import *
@@ -19,7 +19,6 @@ class DataObjSQLDB(DataObj):
 
     def _connect(self):
        if (not self.is_connected):
-          #self.db=dbpool.get_engine(self._configSection) 
           self.db=dbpool.get_connection(self._configSection) 
           self.is_connected = True
        return(self.is_connected)
@@ -27,63 +26,113 @@ class DataObjSQLDB(DataObj):
     def get_from_sql(self) -> str:
        return(self._primaryBackendTable)
 
-    def do(self):
-       self._CurrentAST=ConditionalAST(self._CurrentFilterExpr,self._Field)
-       ASTprocessor=ConditionSQL()
-       wherestr,qparam=ASTprocessor.compile(self._CurrentAST.getAST())
+    def get_first(self):
+       if (self._connect()):
+          logger.debug("Condition: "+pformat(self._CurrentFilterExpr))
+          logger.debug("SQL target dialect: "+pformat(self.db.dialect.name))
+          self._CurrentAST=ConditionalAST(self._CurrentFilterExpr,self._Field)
+          ASTprocessor=ConditionSQL()
+          wherestr,qparam=ASTprocessor.compile(self._CurrentAST.getAST())
+         
+          logger.debug("SQL wherestr: "+pformat(wherestr))
+         
+          selLst=[]
+          CurrentDepend=set()
+          for fldname in self._Field:
+             if (self._Field[fldname].selectfix):
+                CurrentDepend.add(fldname)
+          for fldname in self._CurrentView:
+             if (fldname in self._Field):
+                backendname=self._Field[fldname].getBackendName("select")
+                if (not backendname is None):
+                   aliasname=fldname
+                   selLst.append(backendname+' AS "'+aliasname+'"')
+                if (self._Field[fldname].depend):
+                   for dfldname in self._Field[fldname].depend:
+                      if (dfldname in self._Field):
+                         CurrentDepend.add(dfldname)   
+                      else:
+                         raise(ValueError(
+                            f"invalid .depend '{dfldname}' "\
+                             "in field '{fldname}'")
+                         )
+          for dfldname in CurrentDepend:
+             if (not dfldname in self._CurrentView):
+                backendname=self._Field[dfldname].getBackendName("select")
+                if (not backendname is None):
+                   aliasname=dfldname
+                   selLst.append(backendname+' AS "'+aliasname+'"')
+         
+          selectstr=', '.join(selLst) if (selLst) else "*"
 
-       selLst=[]
-       CurrentDepend=set()
-       for fldname in self._Field:
-          if (self._Field[fldname].selectfix):
-             CurrentDepend.add(fldname)
-       for fldname in self._CurrentView:
-          if (fldname in self._Field):
-             backendname=self._Field[fldname].backendname
-             if (not backendname is None):
-                aliasname=fldname
-                selLst.append(backendname+' AS "'+aliasname+'"')
-             if (self._Field[fldname].depend):
-                for dfldname in self._Field[fldname].depend:
-                   if (dfldname in self._Field):
-                      CurrentDepend.add(dfldname)   
-                   else:
-                      raise(ValueError(
-                         f"invalid .depend '{dfldname}' in field '{fldname}'")
-                      )
-       for dfldname in CurrentDepend:
-          if (not dfldname in self._CurrentView):
-             backendname=self._Field[dfldname].getBackendName("select")
-             if (not backendname is None):
-                aliasname=dfldname
-                selLst.append(backendname+' AS "'+aliasname+'"')
 
-       selectstr=', '.join(selLst) if (selLst) else "*"
+          ####################################################################
+          orderstr=None
+          if (not self._CurrentOrder):
+             self._CurrentOrder=self._CurrentView
+          if (self._CurrentOrder):
+             if (not ([self._CurrentOrder] == ["(NONE)"])):
+                currentOrder=set()
+                print("self._CurrentOrder:")
+                pprint(self._CurrentOrder)
+                for fldname in self._CurrentOrder:
+                   print("ordercheck %s" % fldname)
+                   if (fldname in self._Field):
+                      backendname=self._Field[fldname].getBackendName("order")
+                      print("backendname %s" % backendname)
+                      if (backendname):
+                         currentOrder.add(backendname)
+                if (currentOrder):
+                   orderstr=",".join(currentOrder)
+          ####################################################################
+           
+          
+         
 
+          ####################################################################
+          limitAsLimit=None
+          limitAsWhere=None
+          if (self._limitResult>0 and not self._limitSoft):
+             limitAsLimit=""+str(self._limitStart)+","+str(self._limitResult)
+             limitAsWhere="(ROWNUM>="+str(self._limitStart)+\
+                          " AND ROWNUM<="+str(self._limitResult)+")"
 
-       sqlparts = [
-           f"select {selectstr}",
-           f"from {self.get_from_sql()}",
-           f"where {wherestr}" if wherestr else None,
-           "limit 5",
-       ]
+          if (self.db.dialect.name == "oracle"):
+             if (not wherestr):
+                wherestr=limitAsWhere
+             else:
+                wherestr=limitAsWhere+" AND "+wherestr
+          ####################################################################
 
-       self._lastSQL=" ".join(filter(None,sqlparts))
-       logger.debug("SQL: "+pformat(self._lastSQL))
-       result={}
-       result["data"]=[]
+         
+          sqlparts = [
+              f"select {selectstr}",
+              f"from {self.get_from_sql()}",
+              f"where {wherestr}" if wherestr else None,
+              f"order by {orderstr}" if orderstr else None,
+              f"limit {limitAsLimit}" if self.db.dialect.name == "mysql" \
+                                         and not limitAsLimit is None else None
+          ]
+         
+          self._lastSQL=text(" ".join(filter(None,sqlparts)))
 
-       if (self.do_sql(self._lastSQL,qparam)):
-          return(True)
-       else:
-          print("DB Error:(%s) %s" % (self._lastSQL,self.lastError()))
+          logger.debug("SQL: "+" ".join(filter(None,sqlparts)))
+          result={}
+          result["data"]=[]
+
+           
+         
+          if (self.do_sql(self._lastSQL,qparam)):
+             return(True)
+          else:
+             print("DB Error:(%s) %s" % (self._lastSQL,self.lastError()))
 
 
 
     def do_sql(self,cmd,param):
        if (self._connect()):
           try:
-             query=text(cmd)
+             query=cmd
              #pprint(cmd)
              self._currentResultSet = self.db.execute(query,param)
              self._lastError=None

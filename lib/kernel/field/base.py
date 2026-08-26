@@ -1,10 +1,12 @@
+from pprint import pprint
+
 class Field(dict):
    def __init__(self, **param):
       self.name=param.get("name",None)
       self.backendname=None
       self.selectfix=False
 
-      if "backendname" in param: self.backendname=param["backendname"]
+      if "backendname" in param:   self.backendname=param["backendname"]
       if "selectfix"   in param:   self.selectfix=param["selectfix"]
       if "vjointo"     in param:   self.vjointo=param["vjointo"]
       if "vjoinon"     in param:   self.vjoinon=param["vjoinon"]
@@ -32,10 +34,15 @@ class Field(dict):
       return([{"name":"t1"},{"name":"t2"},{"name":"xxx"}])
 
    def getBackendName(self,mode:str):
-      if (self.backendname):
-         return(self.backendname)
-      if (self.name):
-         return(self.name)
+      if (mode == "select"):
+         if (self.backendname):
+            return(self.backendname)
+         if (not self.decodeRaw and not self.vjointo): 
+            if (self.name):
+               return(self.name)
+      if (mode == "order"):
+         if (self.backendname):
+            return(self.backendname)
       return(None)
       
 

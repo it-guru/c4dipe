@@ -4,12 +4,7 @@ from kernel import *
 
 
 class Event(event):
-   def __init__(self):
-      #print(f"Construct Event in {__file__}")
-      super().__init__()
-
    def run(self):
-      #print(f"run {__file__}")
       o=getModuleObject("base.contact")
       if (o is None):
          return({"status": "failed",
@@ -17,19 +12,21 @@ class Event(event):
            "exitmsg": "failed to instance base.contact"
          })
 
-      search_criteria=[
-         [
-           {
-              "name": "a*"
-           }
-         ]
-      ]
+      min_search_crit={
+        "surname": "vog*",
+        "givenname": "h*",
+        "cistatusid": [3,4,5]
+      }
 
-      #pprint(search_criteria)
+#      search_criteria=[[ min_search_crit]]
 
-      o.setFilter(search_criteria)
+#      o.setFilter([min_search_crit])
+      o.limit(5)
 
-      result=o.getDictList("fullname,mdate,name,urlofcurrentrec,virtual,groups")
+      result=o.getDictList(
+          "fullname,mdate,name,surname,givenname,urlofcurrentrec,virtual,groups",
+          min_search_crit
+      )
 
       return({"status": "success","exitcode": 0,"result": result})
 

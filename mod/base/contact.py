@@ -1,9 +1,5 @@
-from config import config
-from datetime import datetime, timezone
 from kernel.field   import *
 from kernel.dataobj import *
-from kernel.condition import *
-from pprint import pformat, pprint
 
 def _urlofcurrentrec_decodeRaw(self,dbRec,rawVal):
    idFldName=dbRec._parent.getIdFieldName()
@@ -17,9 +13,17 @@ class BaseContact(DataObjSQLDB):
       backendname          = "contact.fullname",
       label                = "fullqualified name"
    )
+   cistatusid       = FieldText(
+      backendname          = "contact.cistatus",
+      label                = "CI-StatusID"
+   )
    surname          = FieldText(  
       backendname          = "contact.surname",
-      label                = "fullqualified name"
+      label                = "surname"
+   )
+   givenname        = FieldText(  
+      backendname          = "contact.givenname",
+      label                = "givenname"
    )
    virtual          = FieldText(  
       label                = "virtual full",

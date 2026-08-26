@@ -1,14 +1,22 @@
 import weakref
+import re
 from kernel.field import *
+from pprint import pprint
 
 class DataObj:
    def __init__(self, db_connection_string: str = None):
       self._Field={}
       self._FieldOrder=[]
       self._GroupOrder=[]
+
       self._CurrentFilterExpr=[[]]
       self._CurrentView=[]
       self._CurrentOrder=[]
+
+      self._limitResult=0
+      self._limitStart=0
+      self._limitSoft=False   # False means limit by backend
+
       if (hasattr(self, "_class_fields")):
          self.addFields(*self._class_fields)
 
@@ -25,30 +33,60 @@ class DataObj:
 
 
    def setFilter(self,filterExpr):
+      if (isinstance(filterExpr,dict)):
+         self._CurrentFilterExpr=[[filterExpr]]
+         return(True) 
+      if (isinstance(filterExpr,list)):
+         haveSubDict=False
+         for subEnt in filterExpr:
+            if (isinstance(subEnt,dict)):
+               haveSubDict=True
+         if (haveSubDict):
+            self._CurrentFilterExpr=[filterExpr]
+            return(True) 
+        
       self._CurrentFilterExpr=filterExpr
       return(True) 
 
    def secureSetFilter(self,filterExpr):
       return(self.setFilter(filterExpr))
 
+   def limit(self,
+             limitResult: int=0,
+             limitStart:  int=0,
+             limitSoft:   bool=False) -> int:
+      self._limitResult=limitResult       
+      self._limitStart=limitStart       
+      self._limitSoft=limitSoft       
+      
+      return(self._limitResult)
+
        
    def setCurrentView(self,view): 
       if (isinstance(view,list)):
-         self._CurrentView=list
+         self._CurrentView=view
       if (isinstance(view,str)):
          if (view == "(ALL)"):
             self._CurrentView=self._FieldOrder
          else:
-            self._CurrentView=view.split(",")
+            if (re.match(r"^\(.?\)$",view)):
+               self._CurrentView=view.strip("()").split(",")
+            elif (re.match(r".*,.*",view)):
+               self._CurrentView=view.split(",")
       return(self._CurrentView)
 
    def setCurrentOrder(self,order): 
       if (isinstance(order,list)):
-         self._CurrentOrder=list
+         self._CurrentOrder=order
       if (isinstance(order,str)):
-         self._CurrentView=order.split(",")
+         if (order == "(NONE)"):
+            self._CurrentOrder="[NONE]"
+         else:
+            if (re.match(r"^\(.?\)$",order)):
+               self._CurrentOrder=order.strip("()").split(",")
+            elif (re.match(r".*,.*",view)):
+               self._CurrentOrder=order.split(",")
       return(self._CurrentOrder)
-
 
    def addFields(self,*fldObjList): 
       for fldObj in fldObjList:
@@ -90,6 +128,10 @@ class DataObj:
 
       if (not view is None):
          self.setCurrentView(view) 
+      if (len(self._CurrentOrder) == 0): # means no order defined
+         self.setCurrentOrder(self._CurrentView)
+      if (not filterExpr is None):
+         self.setFilter(filterExpr)
 
 #      self._CurrentAST=ConditionalAST(self._CurrentFilterExpr,self._Field)
 #      ASTprocessor=ConditionSQL()
@@ -109,7 +151,7 @@ class DataObj:
       result={}
       result["data"]=[]
     
-      if (self.do()):
+      if (self.get_first()):
          while True:
            row=self.get_next()
            if row is None: break
