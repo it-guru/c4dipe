@@ -115,7 +115,7 @@ def getModuleObject(module: str, dataobj: str=None):
        mod = sys.modules[mod_name]
        cls = getattr(mod, class_name)
        return cls()
-
+    print("load from "+str(target_file))
     spec = importlib.util.spec_from_file_location(mod_name, target_file)
     if spec is None or spec.loader is None:
       return None

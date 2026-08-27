@@ -1,7 +1,8 @@
 from .base import DataObj
-from sqlalchemy import text,select
+from sqlalchemy import text,select,event
+from sqlalchemy.engine import Engine
 from sqlalchemy.exc import DBAPIError, SQLAlchemyError
-from dbRecord import dbRecord
+from rawRec import rawRec
 from kernel.condition import *
 from logger import *
 
@@ -9,6 +10,13 @@ import dbpool
 from datetime import datetime, timezone
 
 from pprint import pformat, pprint
+
+#@event.listens_for(Engine, "before_cursor_execute")
+#def receive_before_cursor_execute(conn, cursor, statement, parameters, context, executemany):
+#    print("--- REAL EXECUTED SQL ---")
+#    print(statement)
+#    print("WITH PARAMS:", parameters)
+#    print("-------------------------")
 
 
 class DataObjSQLDB(DataObj):
@@ -32,8 +40,7 @@ class DataObjSQLDB(DataObj):
           logger.debug("SQLDB: dialect: '"+self.db.dialect.name+"'")
           ASTprocessor=ConditionSQL()
           wherestr,qparam=ASTprocessor.compile(self._CurrentAST.getAST())
-         
-          logger.debug("SQLDB: wherestr: '"+pformat(wherestr)+"'")
+          logger.debug("SQLDB: AST wherestr: '"+pformat(wherestr)+"'")
          
           selLst=[]
           CurrentDepend=set()
@@ -112,6 +119,7 @@ class DataObjSQLDB(DataObj):
           self._lastSQL=text(" ".join(filter(None,sqlparts)))
 
           logger.debug("SQLDB: cmd: '"+" ".join(filter(None,sqlparts))+"'")
+          logger.debug("SQLDB: param: "+pformat(qparam,width=99999))
           result={}
           result["data"]=[]
 
@@ -185,8 +193,8 @@ class DataObjSQLDB(DataObj):
           # add some internal _ Entries
           mrow["_RECNO"]=self._RECNO
 
-          # pack it in a dbRecord
-          dbRow=dbRecord(mrow,self._Field,self._CurrentView)
+          # pack it in a rawRec
+          dbRow=rawRec(mrow,self._Field,self._CurrentView)
           dbRow._parent=self
           return(dbRow)
 
@@ -194,7 +202,7 @@ class DataObjSQLDB(DataObj):
 
 
 
-    def insert_record(self, record_id: int, data: dict) -> bool:
+    def insertRecord(self, record_id: int, data: dict) -> bool:
         if record_id in self.records:
             print(f"Fehler: Datensatz {record_id} existiert bereits.")
             return False
@@ -203,7 +211,7 @@ class DataObjSQLDB(DataObj):
         print(f"Datensatz {record_id} erfolgreich eingefuegt.")
         return True
 
-    def update_record(self, record_id: int, new_data: dict) -> bool:
+    def updateRecord(self, record_id: int, new_data: dict) -> bool:
         if record_id not in self.records:
             print(f"Fehler: Datensatz {record_id} nicht gefunden.")
             return False
@@ -213,7 +221,7 @@ class DataObjSQLDB(DataObj):
         print(f"Datensatz {record_id} erfolgreich aktualisiert.")
         return True
 
-    def delete_record(self, record_id: int) -> bool:
+    def deleteRecord(self, record_id: int) -> bool:
         if record_id not in self.records:
             print(f"Fehler: Datensatz {record_id} existiert nicht.")
             return False

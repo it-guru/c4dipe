@@ -40,6 +40,8 @@ class DataObj:
       self._CurrentView=[]
       self._CurrentOrder=[]
 
+      self._lastError=None
+
       self._limitResult=0
       self._limitStart=0
       self._limitSoft=False   # False means limit by backend

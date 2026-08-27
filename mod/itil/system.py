@@ -3,7 +3,7 @@ import json
 import dbpool
 from sqlalchemy import text
 from sqlalchemy.exc import DBAPIError, SQLAlchemyError
-from dbRecord import dbRecord
+from rawRec import rawRec
 from datetime import datetime, timezone
 
 from kernel.field   import *
@@ -149,8 +149,8 @@ class ItilSystem(DataObjSQLDB):
           # add some internal _ Entries
           mrow["_RECNO"]=self._RECNO
 
-          # pack it in a dbRecord
-          dbRow=dbRecord(mrow,self._CurrentView)
+          # pack it in a rawRec
+          dbRow=rawRec(mrow,self._CurrentView)
           return(dbRow)
 
        return(None)

@@ -25,7 +25,7 @@ class Event(event):
       logger.debug(f"{Path(__file__).name}: start")
 
       logger.debug(f"Count1={str(o.countRecords())}")
-      o.limit(5)
+      o.limit(3)
       logger.debug(f"Count2={str(o.countRecords())}")
 
       result=o.getDictList(

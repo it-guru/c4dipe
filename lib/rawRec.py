@@ -1,6 +1,6 @@
 import json
 
-class dbRecord(dict):
+class rawRec(dict):
   def __init__(self,initraw,field,view:list):
      super().__init__()
      self._raw={}
@@ -19,17 +19,21 @@ class dbRecord(dict):
            self._raw[key]=obj._vjoin(self)
         if key in self._rec:
            return(self._rec[key])
+        recAttrDecodedVal=None
+
         if key in self._raw:
            if callable(getattr(obj,"decodeRaw",None)):
-              self._rec[key]=obj.decodeRaw(obj,self,self._raw[key])
+              recAttrDecodedVal=obj.decodeRaw(obj,self,self._raw[key])
            else:
-              self._rec[key]=self._raw[key]
+              recAttrDecodedVal=self._raw[key]
         else:
            if callable(getattr(obj,"decodeRaw",None)):
-              self._rec[key]=obj.decodeRaw(obj,self,None)
+              recAttrDecodedVal=obj.decodeRaw(obj,self,None)
            else:
-              self._rec[key]=None
-        return(self._rec[key])
+              recAttrDecodedVal=None
+        if (not recAttrDecodedVal is None):
+           self._rec[key]=recAttrDecodedVal
+        return(recAttrDecodedVal)
      return(None) 
 
   def __getitem__(self, key):
