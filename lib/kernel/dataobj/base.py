@@ -1,7 +1,34 @@
 import weakref
 import re
 from kernel.field import *
+from kernel.condition import *
 from pprint import pprint
+
+#  general:
+#   addFields
+#
+#  primary operations:
+#   query,countRecords
+#      base:
+#        - setFilter
+#        - limit
+#        - setCurrentView
+#        -setCurrentOrder)
+#
+#   insertRecord
+#   updateRecord
+#   deleteRecord
+#   validatedInsertRecord
+#   validatedUpdateRecord
+#   validatedDeleteRecord
+#
+#  in User-Context:
+#
+#   query   (secureSetFilter based)
+#   secureValidatedInsertRecord
+#   secureValidatedUpdateRecord
+#   secureValidatedDeleteRecord
+#
 
 class DataObj:
    def __init__(self, db_connection_string: str = None):
@@ -46,6 +73,9 @@ class DataObj:
             return(True) 
         
       self._CurrentFilterExpr=filterExpr
+      self._CurrentAST=ConditionalAST(self._CurrentFilterExpr,self._Field)
+
+
       return(True) 
 
    def secureSetFilter(self,filterExpr):
@@ -133,25 +163,10 @@ class DataObj:
       if (not filterExpr is None):
          self.setFilter(filterExpr)
 
-#      self._CurrentAST=ConditionalAST(self._CurrentFilterExpr,self._Field)
-#      ASTprocessor=ConditionSQL()
-#      wherestr,qparam=ASTprocessor.compile(self._CurrentAST.getAST())
-#
-#      selLst=[]
-#      for fldname in self._CurrentView: 
-#         backendname=self._Field[fldname].backendname
-#         if (not backendname is None):
-#            aliasname=fldname
-#            selLst.append(backendname+' AS "'+aliasname+'"')
-#
-#      self._lastSQL="select "+", ".join(selLst)+" "\
-#                    "from grp "+\
-#                    "where "+wherestr+" limit 10"
-#      logger.debug("SQL: "+pformat(self._lastSQL))
       result={}
       result["data"]=[]
     
-      if (self.get_first()):
+      if (self.query()):
          while True:
            row=self.get_next()
            if row is None: break
@@ -162,18 +177,27 @@ class DataObj:
 
       return(result["data"])
 
+   def countRecords(self) -> int:
+      return(self.countRecordsSoft())
 
+   def countRecordsSoft(self) -> int:
+      n=0
+      if (self.query()):
+         while True:
+           row=self.get_next()
+           if row is None: break
+           n+=1
+      return(n)
 
-
-   def insert_record(self, record_id: int, data: dict) -> bool:
+   def insertRecord(self, record_id: int, data: dict) -> bool:
        return True
 
-   def update_record(self, record_id: int, new_data: dict) -> bool:
+   def updateRecord(self, record_id: int, new_data: dict) -> bool:
        self.records[record_id].update(new_data)
        print(f"Datensatz {record_id} erfolgreich aktualisiert.")
        return True
 
-   def delete_record(self, record_id: int) -> bool:
+   def deleteRecord(self, record_id: int) -> bool:
        print(f"Datensatz {record_id} erfolgreich geloescht.")
        return True
 

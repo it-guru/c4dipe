@@ -14,27 +14,26 @@ from pprint import pformat, pprint
 class DataObjSQLDB(DataObj):
     def __init__(self):
         super().__init__()
-        self.is_connected         = False
+        self._is_connected         = False
         self._currentResultSet    = None
 
     def _connect(self):
-       if (not self.is_connected):
+       if (not self._is_connected):
           self.db=dbpool.get_connection(self._configSection) 
-          self.is_connected = True
-       return(self.is_connected)
+          self._is_connected = True
+       return(self._is_connected)
 
     def get_from_sql(self) -> str:
        return(self._primaryBackendTable)
 
-    def get_first(self):
+    def query(self):
        if (self._connect()):
-          logger.debug("Condition: "+pformat(self._CurrentFilterExpr))
-          logger.debug("SQL target dialect: "+pformat(self.db.dialect.name))
-          self._CurrentAST=ConditionalAST(self._CurrentFilterExpr,self._Field)
+          logger.debug("SQLDB: condition: "+pformat(self._CurrentFilterExpr))
+          logger.debug("SQLDB: dialect: '"+self.db.dialect.name+"'")
           ASTprocessor=ConditionSQL()
           wherestr,qparam=ASTprocessor.compile(self._CurrentAST.getAST())
          
-          logger.debug("SQL wherestr: "+pformat(wherestr))
+          logger.debug("SQLDB: wherestr: '"+pformat(wherestr)+"'")
          
           selLst=[]
           CurrentDepend=set()
@@ -73,13 +72,9 @@ class DataObjSQLDB(DataObj):
           if (self._CurrentOrder):
              if (not ([self._CurrentOrder] == ["(NONE)"])):
                 currentOrder=set()
-                print("self._CurrentOrder:")
-                pprint(self._CurrentOrder)
                 for fldname in self._CurrentOrder:
-                   print("ordercheck %s" % fldname)
                    if (fldname in self._Field):
                       backendname=self._Field[fldname].getBackendName("order")
-                      print("backendname %s" % backendname)
                       if (backendname):
                          currentOrder.add(backendname)
                 if (currentOrder):
@@ -116,7 +111,7 @@ class DataObjSQLDB(DataObj):
          
           self._lastSQL=text(" ".join(filter(None,sqlparts)))
 
-          logger.debug("SQL: "+" ".join(filter(None,sqlparts)))
+          logger.debug("SQLDB: cmd: '"+" ".join(filter(None,sqlparts))+"'")
           result={}
           result["data"]=[]
 

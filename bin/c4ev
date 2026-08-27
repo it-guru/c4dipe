@@ -3,6 +3,7 @@ import sys
 sys.dont_write_bytecode = True
 
 import os
+import re
 import importlib
 from pathlib import Path
 script_dir = Path(__file__).resolve().parent
@@ -46,7 +47,12 @@ def main():
    from kernel import getEventObject
 
    #print("instance obj")
-   o=getEventObject(args.evname)
+   evname=args.evname
+   if (not re.match(r"^[^/\.]+[/\.][^/\.]+$",evname)):
+      evname="base."+evname
+      
+   
+   o=getEventObject(evname)
 
    if (o):
       bk=o.run()
