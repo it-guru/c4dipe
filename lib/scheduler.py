@@ -36,8 +36,9 @@ class DynamicScheduler(threading.Thread):
 
   @staticmethod
   def _calculate_next_run(job: dict, now_dt: datetime) -> float:
-    """Calculates the next execution timestamp (float) based on job constraints."""
-    if "interval" in job and job["interval"] is not None and job["interval"] > 0:
+    if ("interval" in job \
+        and job["interval"] is not None \
+        and job["interval"] > 0):
       return (now_dt + timedelta(seconds=int(job["interval"]))).timestamp()
 
     time_str = job.get("time")
@@ -197,7 +198,6 @@ class DynamicScheduler(threading.Thread):
           job_name: str,
           source_file: str,
       ):
-        """Performs HTTP request against a specific target port."""
         target = f"http://127.0.0.1:{target_port}"
         url = f"{target}{endpoint}"
 

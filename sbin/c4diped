@@ -188,13 +188,11 @@ if __name__ == '__main__':
    if ("X-AUTHKEY" in config["GLOBAL"]):
       W6InternalKey = config["GLOBAL"]["X-AUTHKEY"]
 
-   print("fifi01")
    W6Server=Process(target=invoke_W6Server_listener)
    W6Server.daemon=True
    W6ProcServer.append(W6Server)
    W6Server.start()
   
-   print("fifi02")
    W6App=Process(target=invoke_W6App_listener)
    W6App.daemon=True
    W6ProcServer.append(W6App)

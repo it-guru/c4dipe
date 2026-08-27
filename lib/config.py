@@ -20,6 +20,22 @@ class AutoReloadConfigParser(dict):
         self.last_loaded = 0
         self._parser = ConfigParser()
 
+    def _parse_quoted_value(self, raw_val: str, key: str, section: str) -> str:
+            val = raw_val.strip()
+            
+            if ((val.startswith('"') and val.endswith('"')) \
+                 or (val.startswith("'") and val.endswith("'"))):
+                content = val[1:-1]
+                
+                lines = [line.strip() for line in content.splitlines()]
+                return "\n".join(lines)
+            else:
+                raise ValueError(
+                    f"Config-ERROR in [{section}] '{key}': " \
+                     "quotes missing (Aktuell: {raw_val!r})"
+                )
+
+
     def read_with_includes(self):
         temp_parser = ConfigParser()
         temp_parser.optionxform = str
@@ -43,7 +59,8 @@ class AutoReloadConfigParser(dict):
             if temp_parser.has_section("*"):
                for key, val in temp_parser["*"].items():
                  if isinstance(val, str):
-                   global_defaults[key] = val.strip().strip('"\'')
+                   #global_defaults[key] = val.strip().strip('"\'')
+                   global_defaults[key] = self._parse_quoted_value(val,key,"*")
                  else:
                    global_defaults[key] = val
 
@@ -51,7 +68,8 @@ class AutoReloadConfigParser(dict):
                 section_data = global_defaults.copy()
                 for key, val in temp_parser[section].items():
                     if isinstance(val, str):
-                        cleanval = val.strip().strip('"\'')
+                        #cleanval = val.strip().strip('"\'')
+                        cleanval = self._parse_quoted_value(val,key,section)
                     else:
                         cleanval = val
                     section_data[key] = cleanval
