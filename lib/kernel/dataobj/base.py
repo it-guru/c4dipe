@@ -114,9 +114,9 @@ class DataObj:
          if (order == "(NONE)"):
             self._CurrentOrder="[NONE]"
          else:
-            if (re.match(r"^\(.?\)$",order)):
+            if (re.match(r"^\(.+\)$",order)):
                self._CurrentOrder=order.strip("()").split(",")
-            elif (re.match(r".*,.*",view)):
+            elif (re.match(r",",order)):
                self._CurrentOrder=order.split(",")
       return(self._CurrentOrder)
 

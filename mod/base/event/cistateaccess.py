@@ -18,9 +18,9 @@ class Event(event):
       logger.debug(f"{Path(__file__).name}: start")
 
       logger.debug(f"Count(0)={str(o.countRecords())}")
-      o.limit(3)
-      logger.debug(f"Count(3)={str(o.countRecords())}")
-      #o.setCurrentOrder("(NONE)")
+      o.limit(4)
+      logger.debug(f"Count(4)={str(o.countRecords())}")
+      o.setCurrentOrder("(info)")
 
       result=o.getDictList("(ALL)")
 

@@ -191,7 +191,7 @@ class DataObjSQLDB(DataObj):
              else:
                 mrow[k]=v
           # add some internal _ Entries
-          mrow["_RECNO"]=self._RECNO
+          mrow["_RECNO"]=self._RECNO+self._limitStart
 
           # pack it in a rawRec
           dbRow=rawRec(mrow,self._Field,self._CurrentView)

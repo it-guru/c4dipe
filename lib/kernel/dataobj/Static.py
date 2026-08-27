@@ -50,7 +50,7 @@ class DataObjStatic(DataObj):
 
 
     def query(self):
-       print("Static: do query()")
+       #print("Static: do query()")
        self._rawData=self.rawDataCollect()  # entspricht dem SQL Kommando
        #logger.debug("Static: _rawData: "+pformat(self._rawData,width=99999))
        self._rawList=[]
@@ -62,11 +62,12 @@ class DataObjStatic(DataObj):
 
        ####################################################################
        if (not self._CurrentOrder):
+          logger.debug("Static: no CurrentOrder - using view")
           self._CurrentOrder=self._CurrentView
        if (self._CurrentOrder):
           if (not ["(NONE)"] == self._CurrentOrder):
              logger.debug("Static: COrder: \n"+pformat(self._CurrentOrder))
-             sort_key=self.make_sort_key(self._CurrentOrder)
+             sort_key=self.make_sort_key_for_rawData(self._CurrentOrder)
              self._rawList=sorted(self._rawList,key=sort_key)
        ####################################################################
 
@@ -99,64 +100,22 @@ class DataObjStatic(DataObj):
        return(curRec)
 
 
-#
-#    def get_next_sql(self):
-#       if (not self._currentResultSet is None):
-#          row = self._currentResultSet.fetchone()
-#          if (not row is None):
-#             self._RECNO+=1
-#             if hasattr(row, "_mapping"):
-#                return dict(row._mapping)
-#             return(dict(row))
-#          else:
-#             return(None)
-#       else:
-#          print("ERROR: call get_next_sql without self._currentResultSet")
-#       return(None)
-#
-#
-#
-#    def get_next(self):
-#       row=self.get_next_sql()
-#       if (row is not None):
-#          mrow={}
-#          for k,v in row.items():
-#             if isinstance(v, datetime):
-#                if v is None:
-#                   mapped_row[k]=v
-#                elif v.tzinfo is None:
-#                   mrow[k]=v.replace(tzinfo=timezone.utc).strftime(
-#                             "%Y-%m-%d %H:%M:%S")
-#                else:
-#                   mrow[k]=v.astimezone(timezone.utc).strftime(
-#                             "%Y-%m-%d %H:%M:%S")
-#             elif isinstance(v, bytes):
-#                mrow[k]="[bytes]"
-#             else:
-#                mrow[k]=v
-#          # add some internal _ Entries
-#          mrow["_RECNO"]=self._RECNO
-#
-#          # pack it in a rawRec
-#          dbRow=rawRec(mrow,self._Field,self._CurrentView)
-#          dbRow._parent=self
-#          return(dbRow)
-#
-#       return(None)
-
-
 
     def insertRecord(self, record_id: int, data: dict) -> bool:
         return False
 
+
+
     def updateRecord(self, record_id: int, new_data: dict) -> bool:
         return False
+
+
 
     def deleteRecord(self, record_id: int) -> bool:
         return False
 
 
-    def make_sort_key(self,current_order: list):
+    def make_sort_key_for_rawData(self,current_order: list):
        parsed_order = []
        
        for field in current_order:

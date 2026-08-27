@@ -31,7 +31,7 @@ class rawRec(dict):
               recAttrDecodedVal=obj.decodeRaw(obj,self,None)
            else:
               recAttrDecodedVal=None
-        if (not recAttrDecodedVal is None):
+        if (not recAttrDecodedVal is None):  # only not None Values are cached
            self._rec[key]=recAttrDecodedVal
         return(recAttrDecodedVal)
      return(None) 
