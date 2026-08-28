@@ -37,6 +37,7 @@ class DataObj:
       self._GroupOrder=[]
 
       self._CurrentFilterExpr=[[]]
+      self._CurrentAST=None
       self._CurrentView=[]
       self._CurrentOrder=[]
 
@@ -64,17 +65,15 @@ class DataObj:
    def setFilter(self,filterExpr):
       if (isinstance(filterExpr,dict)):
          self._CurrentFilterExpr=[[filterExpr]]
-         return(True) 
-      if (isinstance(filterExpr,list)):
+      elif (isinstance(filterExpr,list)):
          haveSubDict=False
          for subEnt in filterExpr:
             if (isinstance(subEnt,dict)):
                haveSubDict=True
          if (haveSubDict):
             self._CurrentFilterExpr=[filterExpr]
-            return(True) 
-        
-      self._CurrentFilterExpr=filterExpr
+      else:
+         self._CurrentFilterExpr=filterExpr
       self._CurrentAST=ConditionalAST(self._CurrentFilterExpr,self._Field)
 
 

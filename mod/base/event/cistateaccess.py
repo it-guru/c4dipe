@@ -15,12 +15,10 @@ class Event(event):
            "exitmsg": "failed to instance "+dataobjname
          })
 
-      logger.debug(f"{Path(__file__).name}: start")
-
-      logger.debug(f"Count(0)={str(o.countRecords())}")
+      o.setFilter({"id":">3"})
+      o.setFilter({"info":"*UN*"})
       o.limit(4)
-      logger.debug(f"Count(4)={str(o.countRecords())}")
-      o.setCurrentOrder("(info)")
+
 
       result=o.getDictList("(ALL)")
 
