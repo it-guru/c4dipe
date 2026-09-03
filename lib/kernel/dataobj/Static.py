@@ -48,15 +48,16 @@ class DataObjStatic(DataObj):
     def rawDataCollect(self):
        return([])
 
-
-    def query(self):
-       #print("Static: do query()")
-
+    def compileAST(self):
        logger.debug("Static: condition: "+pformat(self._CurrentFilterExpr))
        ASTprocessor=ConditionStatic(case_sensitive=False)
        self._compiledWhere=ASTprocessor.compile(self._CurrentAST.getAST())
        logger.debug("Static: AST wherestr: '"+pformat(self._compiledWhere)+"'")
+       return(True)
 
+
+    def query(self):
+       self.compileAST()
 
        self._rawData=self.rawDataCollect()  # entspricht dem SQL Kommando
        #logger.debug("Static: _rawData: "+pformat(self._rawData,width=99999))
@@ -65,7 +66,10 @@ class DataObjStatic(DataObj):
        for rawDataRec in self._rawData:
           stRow=rawRec(rawDataRec,self._Field,self._CurrentView)
           stRow._parent=self
-          if (self._compiledWhere(stRow)):
+          if (self._compiledWhere):
+             if (self._compiledWhere(stRow)):
+                self._rawList.append(stRow)
+          else:
              self._rawList.append(stRow)
 
        ####################################################################

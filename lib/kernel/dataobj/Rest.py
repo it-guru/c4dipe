@@ -1,3 +1,4 @@
+from .base import DataObj
 from .Static import DataObjStatic
 from rawRec import rawRec
 from kernel.condition import *
@@ -7,12 +8,83 @@ from datetime import datetime, timezone
 
 from pprint import pformat, pprint
 
-class DataObjRest(DataObjStatic):
-    def __init__(self):
-       super().__init__()
-       self._rawData=[] 
 
-    def rawDataCollect(self):
-       return([])
+#
+# DataObjRest can be used for backends (normaly JSON Rest) which are
+# direct support filtering and ordering (and optional pageing)
+#
+class DataObjRest(DataObjStatic):
+   def __init__(self):
+      super().__init__()
+      self._rawData=[] 
+
+   def setFilter(self,filterExpr):
+      super().setFilter(filterExpr)
+      self._pageNumber=1
+      self._maxPages=None
+      self._nextPage=None
+      self._subDataCollectLoopCount=0
+
+
+   def rawDataCollect(self):
+      return([])
+
+
+   def _fillRawListBuffer(self):
+      self._rawData=self.rawDataCollect() 
+      self._rawList=[]
+
+      for rawDataRec in self._rawData:
+         stRow=rawRec(rawDataRec,self._Field,self._CurrentView)
+         stRow._parent=self
+         self._rawList.append(stRow)
+      for stRec in self._rawList:
+         stRec._raw["_RECNO"]=self._RECNO
+         self._RECNO+=1
+
+
+   def query(self):
+      #print("Static: do query()")
+
+      logger.debug("Static: condition: "+pformat(self._CurrentFilterExpr))
+      ASTprocessor=ConditionStatic(case_sensitive=False)
+      self._compiledWhere=ASTprocessor.compile(self._CurrentAST.getAST())
+      logger.debug("Static: AST wherestr: '"+pformat(self._compiledWhere)+"'")
+
+      self._RECNO=0
+      self._fillRawListBuffer()
+
+
+      return(True) 
+
+
+
+   def get_next(self):
+      if (self._rawList is None):
+         return(None)
+      if (len(self._rawList)==0):
+         self._fillRawListBuffer()
+
+      if (not self._rawList):
+         return(None)
+
+      curRec=self._rawList.pop(0)
+
+      return(curRec)
+
+
+
+   def insertRecord(self, record_id: int, data: dict) -> bool:
+       return False
+
+
+
+   def updateRecord(self, record_id: int, new_data: dict) -> bool:
+       return False
+
+
+
+   def deleteRecord(self, record_id: int) -> bool:
+       return False
 
 

@@ -7,7 +7,7 @@ from pathlib import Path
 
 class Event(event):
    def run(self):
-      dataobjname="base.cistatus"
+      dataobjname="smnow.cmdb_ci_server"
       o=getModuleObject(dataobjname)
       if (o is None):
          return({"status": "failed",
@@ -15,13 +15,16 @@ class Event(event):
            "exitmsg": "failed to instance "+dataobjname
          })
 
-      o.setFilter({"id":">3"})
-      o.limit(4)
+      o.setFilter({"name":"ip*"})
+      o.setCurrentView("name,sys_id")
+      if (o.query()):
+         while True:
+           row=o.get_next()
+           if row is None: break
+           print("Next Row:", end="")
+           pprint(row)
 
-
-      result=o.getDictList("(ALL)")
-
-      return({"status": "success","exitcode": 0,"result": result})
+      return({"status": "success","exitcode": 0})
 
      
 
