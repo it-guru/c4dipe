@@ -2,7 +2,8 @@ import weakref
 import re
 from kernel.field import *
 from kernel.condition import *
-from pprint import pprint
+from pprint import pprint, pformat
+from logger import logger
 
 #  general:
 #   addFields
@@ -49,6 +50,8 @@ class DataObj:
 
       if (hasattr(self, "_class_fields")):
          self.addFields(*self._class_fields)
+      super().__init__()
+
 
    def __init_subclass__(cls, **kwargs):
       super().__init_subclass__(**kwargs)
@@ -63,6 +66,7 @@ class DataObj:
 
 
    def setFilter(self,filterExpr):
+      logger.debug("base: setFilter: "+pformat(filterExpr))
       if (isinstance(filterExpr,dict)):
          self._CurrentFilterExpr=[[filterExpr]]
       elif (isinstance(filterExpr,list)):
@@ -72,6 +76,8 @@ class DataObj:
                haveSubDict=True
          if (haveSubDict):
             self._CurrentFilterExpr=[filterExpr]
+         else:
+            self._CurrentFilterExpr=filterExpr
       else:
          self._CurrentFilterExpr=filterExpr
       self._CurrentAST=ConditionalAST(self._CurrentFilterExpr,self._Field)

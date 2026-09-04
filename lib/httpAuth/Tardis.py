@@ -22,7 +22,7 @@ from pprint import pprint
 
 class HttpAuthTardis():
    def __init__(self):
-      pass
+      self._tardis_token=None
 
    def _replaceURLPath(self,url,newpath):
       url=re.sub(r'//([^/]+)/.*$', fr'//\1{newpath}', url)

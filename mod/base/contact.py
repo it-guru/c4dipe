@@ -1,9 +1,9 @@
 from kernel.field   import *
 from kernel.dataobj import *
 
-def _urlofcurrentrec_decodeRaw(self,dbRec,rawVal):
-   idFldName=dbRec._parent.getIdFieldName()
-   return(f"virtual val idfield={idFldName} surname={dbRec['surname']}")
+def _urlofcurrentrec_decodeRaw(self,backendRec,rawVal):
+   idFldName=backendRec._parent.getIdFieldName()
+   return(f"virtual val idfield={idFldName} surname={backendRec['surname']}")
 
 class BaseContact(DataObjSQLDB):
    _configSection          = "BASE"

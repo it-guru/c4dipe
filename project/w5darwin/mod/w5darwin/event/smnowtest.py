@@ -7,7 +7,7 @@ from pathlib import Path
 
 class Event(event):
    def run(self):
-      dataobjname="smnow.cmdb_ci_server"
+      dataobjname="w5darwin.sys_user_group"
       o=getModuleObject(dataobjname)
       if (o is None):
          return({"status": "failed",
@@ -15,8 +15,8 @@ class Event(event):
            "exitmsg": "failed to instance "+dataobjname
          })
 
-      o.setFilter({"name":"ede18*"})
-      o.setCurrentView("name,sysid,sysclass,mdate")
+      o.setFilter({"name":"adm*"})
+      o.setCurrentView("(ALL)")
       if (o.query()):
          while True:
            row=o.get_next()

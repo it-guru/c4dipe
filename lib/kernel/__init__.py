@@ -81,7 +81,7 @@ def importToNamespace(file_path,target_namespace_str):
 
 
 def getModuleObject(module: str, dataobj: str=None):
-
+  print(f"getModuleObject {dataobj}")
   if (dataobj is None):
      match=re.match(r"^([^./]+)[./]([^./]+)$",module)
      if (match):
@@ -103,7 +103,9 @@ def getModuleObject(module: str, dataobj: str=None):
   target_file = next((p for p in search_paths if p.is_file()), None)
 
   if not target_file:
-    return None
+     logger.error(f"getModuleObject: dataobj '{dataobj}' not resolvable")
+     return None
+  logger.debug(f"getModuleObject: using file '{target_file}'")
 
   mod_name = f"dyn_mod_{module}_{dataobj}"
   class_name = (

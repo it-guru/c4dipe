@@ -29,12 +29,24 @@ class DataObjRest(DataObjStatic):
    def rawDataCollect(self):
       return([])
 
-
+   def mapBackendRec(self,rawDataRec):   # implement "as" selection from SQL
+      for key in self._Field:            # on JSON REST Results
+         obj=self._Field[key]
+         backendname=self._Field[key].getBackendName("select")
+         backendVal=None
+         if (backendname):
+            if (backendname in rawDataRec):
+               backendVal=rawDataRec[backendname]
+         if (callable(getattr(obj,"decodeBackendStr",None))):
+            backendVal=obj.decodeBackendStr(backendVal)
+         rawDataRec[key]=backendVal
+           
    def _fillRawListBuffer(self):
       self._rawData=self.rawDataCollect() 
 
       self._rawList=[]
-      for rawDataRec in self._rawData:
+      for rawDataRec in self._rawData: 
+         self.mapBackendRec(rawDataRec)      
          stRow=rawRec(rawDataRec,self._Field,self._CurrentView)
          stRow._parent=self
          self._rawList.append(stRow)

@@ -31,6 +31,7 @@ class DataObjSQLDB(DataObj):
           self._is_connected = True
        return(self._is_connected)
 
+
     def get_from_sql(self) -> str:
        return(self._primaryBackendTable)
 

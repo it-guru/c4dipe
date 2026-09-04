@@ -37,38 +37,38 @@ class ConditionServiceNow:
 
         # 1. Wildcard / LIKE Translations
 
-        if op in ("LIKE", "STARTSWITH"):
-            # Egal ob * am Ende steht oder ein Präfix gesucht wird:
-            # Wir übersetzen Präfix-Suchen auf den stabilen LIKE-Operator
-            clean_val = val.rstrip("*")
-            
-            if negate:
-                return f"{field_name}NOTLIKE{clean_val}"
-            else:
-                return f"{field_name}LIKE{clean_val}"
-
-#        if op == "LIKE":
-#            has_leading_star = val.startswith("*")
-#            has_trailing_star = val.endswith("*")
-#
-#            # Clean outer stars for ServiceNow operators
-#            clean_val = val
-#            if has_leading_star:
-#                clean_val = clean_val[1:]
-#            if has_trailing_star:
-#                clean_val = clean_val[:-1]
-#
-#            if has_leading_star and has_trailing_star:
-#                sn_op = "NOTLIKE" if negate else "LIKE"
-#            elif has_trailing_star:
-#                sn_op = "NOTSTARTSWITH" if negate else "STARTSWITH"
-#            elif has_leading_star:
-#                sn_op = "NOTENDSWITH" if negate else "ENDSWITH"
+#        if op in ("LIKE", "STARTSWITH"):
+#            # Egal ob * am Ende steht oder ein Präfix gesucht wird:
+#            # Wir übersetzen Präfix-Suchen auf den stabilen LIKE-Operator
+#            clean_val = val.rstrip("*")
+#            
+#            if negate:
+#                return f"{field_name}NOTLIKE{clean_val}"
 #            else:
-#                # Fallback for inner wildcards or general LIKE
-#                sn_op = "NOTLIKE" if negate else "LIKE"
-#
-#            return f"{field_name}{sn_op}{clean_val}"
+#                return f"{field_name}LIKE{clean_val}"
+
+        if op == "LIKE":
+            has_leading_star = val.startswith("*")
+            has_trailing_star = val.endswith("*")
+
+            # Clean outer stars for ServiceNow operators
+            clean_val = val
+            if has_leading_star:
+                clean_val = clean_val[1:]
+            if has_trailing_star:
+                clean_val = clean_val[:-1]
+
+            if has_leading_star and has_trailing_star:
+                sn_op = "NOTLIKE" if negate else "LIKE"
+            elif has_trailing_star:
+                sn_op = "NOTSTARTSWITH" if negate else "STARTSWITH"
+            elif has_leading_star:
+                sn_op = "NOTENDSWITH" if negate else "ENDSWITH"
+            else:
+                # Fallback for inner wildcards or general LIKE
+                sn_op = "NOTLIKE" if negate else "LIKE"
+
+            return f"{field_name}{sn_op}{clean_val}"
 
         # 2. Standard Comparison Operators
         op_map = {

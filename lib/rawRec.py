@@ -1,4 +1,5 @@
 import json
+from pprint import pprint
 
 class rawRec(dict):
   def __init__(self,initraw,field,view:list):
@@ -20,7 +21,7 @@ class rawRec(dict):
         if key in self._rec:
            return(self._rec[key])
         recAttrDecodedVal=None
-
+ 
         if key in self._raw:
            if callable(getattr(obj,"decodeRaw",None)):
               recAttrDecodedVal=obj.decodeRaw(obj,self,self._raw[key])
