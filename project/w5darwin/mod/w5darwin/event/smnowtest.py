@@ -15,7 +15,8 @@ class Event(event):
            "exitmsg": "failed to instance "+dataobjname
          })
 
-      o.setFilter({"name":"adm*"})
+      o.setFilter({"name":"a*"})
+      o.limit(3,5)
       o.setCurrentView("(ALL)")
       if (o.query()):
          while True:

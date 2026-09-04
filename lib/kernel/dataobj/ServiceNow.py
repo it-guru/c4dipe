@@ -103,13 +103,29 @@ class DataObjServiceNow(DataObjRest):
       if (self._primaryBackendTable.startswith("now/table/")): # nativ TableAPI
          reqParamDict={
             "sysparm_suppress_pagination_header"   : "false",
+            "sysparm_input_display_value"          : "false",
+         #   "sysparm_display_value"                : "all",
+            "sysparm_exclude_reference_link"       : "true",
+            "sysparm_limit" : "9",
+            "sysparm_time_zone" : "UTC"
          }
+         if (self._limitStart>0):
+            reqParamDict["sysparm_offset"]=self._limitStart
+         if (self._limitResult>0):
+            reqParamDict["sysparm_limit"]=self._limitResult
 
       else:   # Tardis Gateway
          reqParamDict={
             "pageSize"   : 50,
-            "pageNumber" : self._pageNumber
+            "pageNumber" : self._pageNumber,
+            "sysparm_time_zone" : "UTC"
          }
+         # limits ueber das Tardis Gateway passen so sicherlich noch nicht
+         if (self._limitResult>0):   
+            reqParamDict["pageSize"]=self._limitResult
+         if (self._limitStart>0):
+            pageSkip=self._limitStart//reqParamDict["pageSize"]
+            reqParamDict["pageNumber"]=pageSkip
 
 
       if (self._sysparm_query):
@@ -132,6 +148,7 @@ class DataObjServiceNow(DataObjRest):
       req.add_header("Authorization", Authorization)
       req.add_header("User-Agent",    "C4Request/1.0")
       req.add_header("Content-Type",  "application/x-www-form-urlencoded")
+      req.add_header("Accept-Time-Zone","UTC")
 
       opener = urllib.request.build_opener()
     
@@ -141,11 +158,15 @@ class DataObjServiceNow(DataObjRest):
 
       with opener.open(req, timeout=5) as response:
          charset = response.headers.get_content_charset(failobj="utf-8")
+         #pprint(dict(response.headers))
          result_text = response.read().decode(charset)
+         #print(result_text)
          r = json.loads(result_text)
-         pprint(r)
+         #pprint(r)
          data=[]
          if (r.get("result",None)):
+            if (r.get("result",None).get("code",None)==201):
+               return([])
             data=r.get("result",[])
          else:
             data=r.get("data",[])

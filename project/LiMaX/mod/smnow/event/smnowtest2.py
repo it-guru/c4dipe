@@ -15,7 +15,7 @@ class Event(event):
            "exitmsg": "failed to instance "+dataobjname
          })
 
-      o.setFilter({"name":"ede18*"})
+      o.setFilter({"name":"ede1*","mdate":">2026-09-04 12:00:00"})
       o.setCurrentView("name,sysid,sysclass,mdate")
       if (o.query()):
          while True:

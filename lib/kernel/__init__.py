@@ -8,6 +8,8 @@ from pprint import pprint
 from logger import logger
 from config import config
 
+import traceback
+
 __all__ = ['funktion1','ist_pid_aktiv','importToNamespace','getModuleObject',
            'getEventObject']
 
@@ -81,7 +83,6 @@ def importToNamespace(file_path,target_namespace_str):
 
 
 def getModuleObject(module: str, dataobj: str=None):
-  print(f"getModuleObject {dataobj}")
   if (dataobj is None):
      match=re.match(r"^([^./]+)[./]([^./]+)$",module)
      if (match):
