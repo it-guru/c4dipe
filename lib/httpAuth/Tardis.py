@@ -1,5 +1,4 @@
-from .base import DataObj
-from .Rest import DataObjRest
+#from .Rest import DataObjRest
 from rawRec import rawRec
 from kernel.condition import *
 from logger import *
@@ -21,9 +20,9 @@ from pprint import pprint
 
 
 
-class DataObjTardis(DataObjRest):
+class HttpAuthTardis():
    def __init__(self):
-      super().__init__()
+      pass
 
    def _replaceURLPath(self,url,newpath):
       url=re.sub(r'//([^/]+)/.*$', fr'//\1{newpath}', url)
@@ -78,34 +77,8 @@ class DataObjTardis(DataObjRest):
          return(self._tardis_token.get("Authorization"))
       return(None)
 
-
-
-
-#   def query(self):
-#      logger.debug("Static: condition: "+pformat(self._CurrentFilterExpr))
-#      ASTprocessor=ConditionStatic(case_sensitive=False)
-#      self._compiledWhere=ASTprocessor.compile(self._CurrentAST.getAST())
-#      logger.debug("Static: AST wherestr: '"+pformat(self._compiledWhere)+"'")
-#
-#      self._RECNO=0
-#      self._fillRawListBuffer()
-#
-#
-#      return(True) 
-#
-#
-#
-#   def get_next(self):
-#      if (self._rawList is None):
-#         return(None)
-#      if (len(self._rawList)==0):
-#         self._fillRawListBuffer()
-#
-#      if (not self._rawList):
-#         return(None)
-#
-#      curRec=self._rawList.pop(0)
-#      return(curRec)
+   def getAuthorization(self,configSection: str):
+      return(self._getTardisToken(configSection))
 
 
 
