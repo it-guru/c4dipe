@@ -15,7 +15,8 @@ class Event(event):
            "exitmsg": "failed to instance "+dataobjname
          })
 
-      o.setFilter({"name":"ip*"})
+      o.setFilter({"name":"ip-100-72-80*"})
+      o.setFilter({"name":"ede18*"})
       o.setCurrentView("name,sys_id")
       if (o.query()):
          while True:

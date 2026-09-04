@@ -32,8 +32,8 @@ class DataObjRest(DataObjStatic):
 
    def _fillRawListBuffer(self):
       self._rawData=self.rawDataCollect() 
-      self._rawList=[]
 
+      self._rawList=[]
       for rawDataRec in self._rawData:
          stRow=rawRec(rawDataRec,self._Field,self._CurrentView)
          stRow._parent=self
@@ -42,18 +42,16 @@ class DataObjRest(DataObjStatic):
          stRec._raw["_RECNO"]=self._RECNO
          self._RECNO+=1
 
+   def compileAST(self):
+      return(True)
+
+
 
    def query(self):
-      #print("Static: do query()")
-
-      logger.debug("Static: condition: "+pformat(self._CurrentFilterExpr))
-      ASTprocessor=ConditionStatic(case_sensitive=False)
-      self._compiledWhere=ASTprocessor.compile(self._CurrentAST.getAST())
-      logger.debug("Static: AST wherestr: '"+pformat(self._compiledWhere)+"'")
+      self.compileAST()
 
       self._RECNO=0
-      self._fillRawListBuffer()
-
+      self._rawList=[]
 
       return(True) 
 
