@@ -92,7 +92,11 @@ def getModuleObject(module: str, dataobj: str=None):
      if (match):
         module=match.group(1)
         dataobj=match.group(2)
-     
+     else:
+        match=re.match(r"^([^./]+)::([^./]+)$",module)
+        if (match):
+           module=match.group(1)
+           dataobj=match.group(2)
 
   search_paths = []
   base_dir=config["GLOBAL"]["BASE_DIR"]

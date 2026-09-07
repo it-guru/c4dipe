@@ -44,7 +44,9 @@ class Field(dict):
          if (self.backendname):
             return(self.backendname)
       return(None)
-      
+
+   def validate(self,oldrec: dict, newrec: dict, orgRec: dict):
+      return(False)
 
    def prepConditionString(self,condStr: str) -> str :
       #print("prepConditionString %s : '%s'" % (self.name,condStr) )

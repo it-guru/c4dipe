@@ -1,7 +1,7 @@
 {
   "err.getModuleObject.notresolveable": {
-    "de": "getModuleObject: '{dataobj}' nicht auflößbar",
-    "en": "getModuleObject: '{dataobj}' not resolveable"
+    "de": "getModuleObject: '{module}.{dataobj}' nicht auflößbar",
+    "en": "getModuleObject: '{module}.{dataobj}' not resolveable"
   }
 }
 

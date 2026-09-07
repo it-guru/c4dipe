@@ -9,6 +9,9 @@ from flask import Flask, jsonify, request, current_app, Blueprint, abort, g
 import threading
 from kernel import *
 import resource
+
+import http.client
+import socket
 import urllib.request
 import urllib.error
 import json
@@ -90,8 +93,8 @@ class W6Flask(Flask):
       print(f"[isParentRunning] ppid={self.ppid}  os.getppid={getpid}")
       return os.getppid() == self.ppid
 
-   def getUniqueId(self):
-      self.logger.info(f"[getUniqueId] start")
+   def createUniqueId(self):
+      self.logger.info(f"[createUniqueId] start")
       proxy_handler=urllib.request.ProxyHandler({})
       HttpAgent=urllib.request.build_opener(proxy_handler)
 
@@ -103,13 +106,13 @@ class W6Flask(Flask):
  
       for attempt in range(1, max_retries + 1): 
          try:
-            url=f"{target}/app/rpcGetUniqueId"
+            url=f"{target}/app/rpcCreateUniqueId"
             req=urllib.request.Request(url,method="GET")
             print(f"GET {url}")
             with HttpAgent.open(req,timeout=3) as response:
                 status_code=response.status
                 if status_code != 200:
-                   self.logger.info(f"[getUniqueId] fail retry")
+                   self.logger.info(f"[createUniqueId] fail retry")
                    time.sleep(retry_delay)
                    continue
                 result=response.read().decode('utf-8')

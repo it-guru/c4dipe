@@ -25,6 +25,8 @@ def set_request_language():
    lang=request.args.get("lang") \
         or request.accept_languages.best_match(["de","en"])
    g.lang = lang  
+   g.remote_user=session.get("username",None)
+   g.isWebUIRequest=True
 
 
 @app.route('/<AppConfig>/internalTimer')

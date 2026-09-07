@@ -203,14 +203,9 @@ class DataObjSQLDB(DataObj):
 
 
 
-    def insertRecord(self, record_id: int, data: dict) -> bool:
-        if record_id in self.records:
-            print(f"Fehler: Datensatz {record_id} existiert bereits.")
-            return False
-
-        self.records[record_id] = data
-        print(f"Datensatz {record_id} erfolgreich eingefuegt.")
+    def insertRecord(self,  newrec: dict, orgrec: dict) -> str:
         return True
+
 
     def updateRecord(self, record_id: int, new_data: dict) -> bool:
         if record_id not in self.records:

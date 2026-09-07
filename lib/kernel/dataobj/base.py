@@ -5,6 +5,17 @@ from kernel.condition import *
 from pprint import pprint, pformat
 from logger import logger
 
+import http.client
+import socket
+import resource
+import urllib.request
+import urllib.error
+import json
+
+from flask import g, has_request_context
+
+import copy
+
 #  general:
 #   addFields
 #
@@ -196,19 +207,115 @@ class DataObj:
            n+=1
       return(n)
 
-   def insertRecord(self, record_id: int, data: dict) -> bool:
+   # Delete Validation
+
+   def validateDelete(self,oldrec: dict):
+      return(False)
+
+
+   # Update/Insert Validation
+
+   def preValidate(self,oldrec: dict, newrec: dict, orgRec: dict):
+      # validate BEFORE fieldValidate
+      return(False)
+
+   def validate(self,oldrec: dict, newrec: dict, orgRec: dict):
+      # validate AFTER fieldValidate
+      return(False)
+
+
+
+   def insertRecord(self,newrec: dict) -> str:
        return True
 
-   def updateRecord(self, record_id: int, new_data: dict) -> bool:
-       self.records[record_id].update(new_data)
-       print(f"Datensatz {record_id} erfolgreich aktualisiert.")
+   def validatedInsertRecord(self, newrec: dict) -> str:
+      orgNewRec=copy.deepcopy(newrec)
+      
+      # do field validate (with posible field-value changes)
+
+      # check security
+      if (has_request_context() and \
+          g.getattr("isWebUIRequest",False)):
+         print("WebUI validatedInsertRecord")
+
+      if (self.validate(None,newrec,orgNewRec)):
+         return(self.insertRecord(newrec,orgNewRec))
+      return(None)
+
+
+
+   def updateRecord(self, oldrec: dict, newrec: dict, orgRec: dict):
        return True
 
-   def deleteRecord(self, record_id: int) -> bool:
-       print(f"Datensatz {record_id} erfolgreich geloescht.")
+   def validatedUpdateRecord(self, oldrec: dict,newrec: dict, filter: dict) -> str:
+      orgNewRec=copy.deepcopy(newrec)
+      
+      # do field validate (with posible field-value changes)
+
+      # check security
+      if (has_request_context() and \
+          g.getattr("isWebUIRequest",False)):
+         print("WebUI validatedInsertRecord")
+
+      if (self.validate(oldrec,newrec,orgNewRec)):
+         return(self.updateRecord(oldrec,newrec,orgNewRec))
+      return(None)
+
+
+   def finishUpdateRecord(self, oldrec: dict, newrec: dict, orgRec: dict):
        return True
+
+
+
+
+   def deleteRecord(self, oldrec: dict) -> bool:
+       # do validateDelete
+       return True
+
+
+
 
    def lastError(self):
       return(self._lastError)
+
+   def createUniqueId(self):
+      logger.debug(f"[createUniqueId] start")
+      proxy_handler=urllib.request.ProxyHandler({})
+      HttpAgent=urllib.request.build_opener(proxy_handler)
+
+      target=f"http://127.0.0.1:8081"
+      result=None
+
+      max_retries = 15 
+      retry_delay = 2 
+ 
+      for attempt in range(1, max_retries + 1): 
+         try:
+            url=f"{target}/config/app/rpcCreateUniqueId"
+            req=urllib.request.Request(url,method="GET")
+            with HttpAgent.open(req,timeout=3) as response:
+                status_code=response.status
+                if status_code != 200:
+                   self.logger.info(f"[createUniqueId] fail retry")
+                   time.sleep(retry_delay)
+                   continue
+                result=response.read().decode('utf-8')
+                break
+
+         except (urllib.error.URLError,
+                 http.client.HTTPException,
+                 socket.error,
+                 ConnectionResetError) as e:
+            result = '{"status": "network_error","exitcode": 500}'
+
+         except Exception as e:
+            result = '{"status": "unexpected_error","exitcode": 500}'
+
+      r=json.loads(result)
+      if r["exitcode"]==0 :
+         return(r["UniqueID"])
+      else:
+         return(None)
+      
 
 
