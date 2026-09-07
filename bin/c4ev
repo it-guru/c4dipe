@@ -41,8 +41,14 @@ def main():
    parser.add_argument("-c","--config",
                        default='c4dipe',
                        help="defines the config to load")
+   parser.add_argument("-l","--lang",
+                       help="set lang (overwrites env)")
    args = parser.parse_args()
    __CONFIG__=args.config
+
+   if args.lang:
+      os.environ["LANG"] = args.lang
+
 
    from kernel import getEventObject
 

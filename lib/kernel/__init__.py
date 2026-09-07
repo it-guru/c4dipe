@@ -8,6 +8,10 @@ from pprint import pprint
 from logger import logger
 from config import config
 
+from nls import NLSManager
+_ = NLSManager(__file__)
+
+
 import traceback
 
 __all__ = ['funktion1','ist_pid_aktiv','importToNamespace','getModuleObject',
@@ -104,7 +108,10 @@ def getModuleObject(module: str, dataobj: str=None):
   target_file = next((p for p in search_paths if p.is_file()), None)
 
   if not target_file:
-     logger.error(f"getModuleObject: dataobj '{dataobj}' not resolvable")
+     #logger.error(f"getModuleObject: dataobj '{dataobj}' not resolvable")
+     logger.error(_.fmt_locals("err.getModuleObject.notresolveable"))
+
+
      return None
   logger.debug(f"getModuleObject: using file '{target_file}'")
 

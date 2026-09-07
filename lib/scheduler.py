@@ -213,7 +213,7 @@ class DynamicScheduler(threading.Thread):
             result = response.read().decode("utf-8")
             logger.debug(f"[{job_name} ({source_file})]:")
             logger.debug(f" {method} {url} ->")
-            logger.debug(f" result: {response.status}: {result[:10]}")
+            logger.debug(f" result: {response.status}")
 
         except urllib.error.HTTPError as e:
           logger.warning(f"[{job_name} ({source_file})] HTTP {e.code} "\

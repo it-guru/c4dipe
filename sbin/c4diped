@@ -133,7 +133,7 @@ def invoke_W6Server_listener():
       'on_exit': on_exit,
       'loglevel': os.environ.get('LOG_LEVEL', 'warning').lower()
    }
-
+   print("Start scheduler")
    scheduler.start()
 
    W6GunicornApp("workers.W6Server:app", options).run()

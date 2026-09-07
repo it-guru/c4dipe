@@ -5,7 +5,7 @@ import signal
 from pathlib import Path
 import importlib
 import time
-from flask import Flask, jsonify, request, current_app, Blueprint, abort
+from flask import Flask, jsonify, request, current_app, Blueprint, abort, g
 import threading
 from kernel import *
 import resource

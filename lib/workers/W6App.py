@@ -20,6 +20,12 @@ class W6FlaskApp(W6Flask):
 app = W6FlaskApp(__name__)
 app.plugdir="plugin"
 
+@app.before_request
+def set_request_language():
+   lang=request.args.get("lang") \
+        or request.accept_languages.best_match(["de","en"])
+   g.lang = lang  
+
 
 @app.route('/<AppConfig>/internalTimer')
 

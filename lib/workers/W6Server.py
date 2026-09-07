@@ -19,7 +19,7 @@ from pprint import pformat, pprint
 
 
 
-from W6Flask import W6Flask, jsonify, request, current_app, abort
+from W6Flask import W6Flask, jsonify, request, current_app, abort, g
 
 class W6FlaskServer(W6Flask):
    def __init__(self, *args, **kwargs):
@@ -35,6 +35,13 @@ class W6FlaskServer(W6Flask):
 
 app = W6FlaskServer(__name__)
 app.plugdir="event"
+
+@app.before_request
+def set_request_language():
+   lang=request.args.get("lang") \
+        or request.accept_languages.best_match(["de","en"])
+   g.lang = lang
+
 
 @app.route('/<AppConfig>/internalTimer')
 def internalTimer(AppConfig):

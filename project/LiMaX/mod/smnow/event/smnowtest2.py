@@ -4,6 +4,9 @@ from kernel import *
 from logger import logger
 from pathlib import Path
 
+from nls import NLSManager
+_ = NLSManager(__file__)
+
 
 class Event(event):
    def run(self):
@@ -16,12 +19,13 @@ class Event(event):
          })
 
       o.setFilter({"name":"ede1*","mdate":">2026-09-04 12:00:00"})
-      o.setCurrentView("name,sysid,sysclass,mdate")
-      if (o.query()):
-         while True:
-           row=o.get_next()
-           if row is None: break
-           pprint(row)
+#      o.setCurrentView("name,sysid,sysclass,mdate")
+#      if (o.query()):
+#         while True:
+#           row=o.get_next()
+#           if row is None: break
+#           pprint(row)
+      print("Test NLS %s" % _("givenname"))
 
       return({"status": "success","exitcode": 0})
 
