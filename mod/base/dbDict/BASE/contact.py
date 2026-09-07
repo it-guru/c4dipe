@@ -168,7 +168,7 @@ def get_table_schema(metadata):
       Column("notifieddismissaldate", DateTime, nullable=True),
       Column("office_sisnumber", String(20), nullable=True),
       Column("lorgchangedt", DateTime, nullable=True),
-      Column("mdate", DateTime, nullable=True),
+      Column("modifydate", DateTime, nullable=True),
 
       # --- Unique Constraints ---
       UniqueConstraint("fullname", 

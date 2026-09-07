@@ -68,5 +68,6 @@ class NLSManager:
           del caller_frame
 
     fl=fmt_locals
+    f=fmt_locals
 
 

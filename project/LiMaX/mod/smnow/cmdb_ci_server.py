@@ -61,6 +61,9 @@ class SmnowCmdb_ci_server(DataObjServiceNow, HttpAuthTardis):
       backendname          = "sys_id",
       label                = "SysId"
    )
+   recno                   = FieldRecNo(
+      label                = "Record Number"
+   )
    mdate                   = FieldDate(
       backendname          = "sys_updated_on",
       label                = "SysUpdatedOn"

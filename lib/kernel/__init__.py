@@ -113,7 +113,7 @@ def getModuleObject(module: str, dataobj: str=None):
 
 
      return None
-  logger.debug(f"getModuleObject: using file '{target_file}'")
+  logger.debug(f"getModuleObject: using file '{target_file}' for {module}.{dataobj}")
 
   mod_name = f"dyn_mod_{module}_{dataobj}"
   class_name = (
@@ -125,7 +125,6 @@ def getModuleObject(module: str, dataobj: str=None):
        mod = sys.modules[mod_name]
        cls = getattr(mod, class_name)
        return cls()
-    print("load from "+str(target_file))
     spec = importlib.util.spec_from_file_location(mod_name, target_file)
     if spec is None or spec.loader is None:
       return None

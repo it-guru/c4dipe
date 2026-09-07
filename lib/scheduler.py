@@ -16,8 +16,6 @@ from config import config
 from pprint import pprint
 from logger import logger
 
-#logger = logging.getLogger("CronScheduler")
-
 
 class DynamicScheduler(threading.Thread):
 
@@ -98,7 +96,6 @@ class DynamicScheduler(threading.Thread):
     return (now_dt + timedelta(days=1)).timestamp()
 
   def _resolve_all_file_paths(self) -> Set[Path]:
-
     base_dir=Path(config["GLOBAL"]["BASE_DIR"])
     self.config_patterns = [
         str(base_dir / "crontab.json"),  # Global crontab in root
@@ -106,9 +103,20 @@ class DynamicScheduler(threading.Thread):
         str(base_dir / "mod" / "*" / "crontab.json"),  # Wildcard across modules
     ]
 
+    modpath_str = config.get("GLOBAL", {}).get("MOD_PATH", "")
+    raw_paths = [p.strip() for p in modpath_str.split(":") if p.strip()]
+    for raw_path in raw_paths:
+       if not raw_path.startswith("/"):
+          dir_path = Path(base_dir) / raw_path
+       else:
+          dir_path = Path(raw_path)
+       self.config_patterns.append(dir_path / "crontab.json")
+       self.config_patterns.append(dir_path / "mod" / "*" / "crontab.json")
+
     found_files = set()  # type: Set[Path]
 
     for pattern in self.config_patterns:
+      logger.debug("scheduler: loading pattern: '%s'" % str(pattern))
       matches = glob(str(pattern), recursive=True)
 
       for match_str in matches:
@@ -120,6 +128,9 @@ class DynamicScheduler(threading.Thread):
             if json_file.is_file():
               found_files.add(json_file.resolve())
 
+    for json_file in found_files:
+       logger.debug("scheduler: using cron file: '%s'" % str(json_file))
+
     return found_files
 
 
@@ -127,7 +138,7 @@ class DynamicScheduler(threading.Thread):
     try:
       current_files = self._resolve_all_file_paths()
       current_mtimes = {}
-      logger.error("start scheduler._load_config")
+      logger.debug("start scheduler._load_config")
 
       for file_path in current_files:
         try:
@@ -235,7 +246,7 @@ class DynamicScheduler(threading.Thread):
 
 
   def run(self):
-    """Main loop checking schedules and dispatching tasks."""
+    time.sleep(3.0)
     logger.info("CronScheduler background thread started.")
     loopCount=0
     while self._running:

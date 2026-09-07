@@ -90,7 +90,7 @@ class AutoReloadConfigParser(dict):
               self["GLOBAL"]["BASE_DIR"]= \
                   str(Path(__file__).resolve().parents[1])
 
-            logger.info("Config successfuly loaded")
+            logger.debug(f"Config '{self.config_file}' successfuly loaded")
 
         except Exception as e:
             logger.warning(f"Config load failed: {e}. " \

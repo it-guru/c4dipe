@@ -51,7 +51,7 @@ class DataObjRest(DataObjStatic):
          stRow._parent=self
          self._rawList.append(stRow)
       for stRec in self._rawList:
-         stRec._raw["_RECNO"]=self._RECNO
+         stRec._raw["_RECNO"]=(self._RECNO+1)
          self._RECNO+=1
 
    def compileAST(self):
@@ -70,16 +70,23 @@ class DataObjRest(DataObjStatic):
 
 
    def get_next(self):
+      curRec=None
       if (self._rawList is None):
          return(None)
-      if (len(self._rawList)==0):
-         self._fillRawListBuffer()
-
-      if (not self._rawList):
-         return(None)
-
-      curRec=self._rawList.pop(0)
-
+      while True:
+         if (len(self._rawList)==0):
+            self._fillRawListBuffer()
+         if (not self._rawList):
+            return(None)
+         curRec=self._rawList.pop(0)
+         if (self._limitStart>0):
+            if (curRec._raw['_RECNO']<self._limitStart):
+               continue
+         break
+      if (self._limitResult>0):
+         resultRecNo=curRec._raw['_RECNO']-self._limitStart
+         if (resultRecNo>self._limitResult):
+            return(None) 
       return(curRec)
 
 

@@ -66,9 +66,9 @@ class DataObjServiceNow(DataObjRest):
       requestURL=self.getApiEndpointURL()
 
       self._subDataCollectLoopCount+=1
-      if (self._subDataCollectLoopCount>10):
-         print("to many requests; break")
-         return([])
+      #if (self._subDataCollectLoopCount>10):
+      #   print("to many requests; break")
+      #   return([])
 
       fields_set = set()
       CurrentDepend = set()
@@ -106,26 +106,25 @@ class DataObjServiceNow(DataObjRest):
             "sysparm_input_display_value"          : "false",
          #   "sysparm_display_value"                : "all",
             "sysparm_exclude_reference_link"       : "true",
-            "sysparm_limit" : "9",
             "sysparm_time_zone" : "UTC"
          }
-         if (self._limitStart>0):
-            reqParamDict["sysparm_offset"]=self._limitStart
-         if (self._limitResult>0):
-            reqParamDict["sysparm_limit"]=self._limitResult
+#         if (self._limitStart>0):
+#            reqParamDict["sysparm_offset"]=self._limitStart
+#         if (self._limitResult>0):
+#            reqParamDict["sysparm_limit"]=self._limitResult
 
       else:   # Tardis Gateway
          reqParamDict={
-            "pageSize"   : 50,
+            "pageSize"   : 499,
             "pageNumber" : self._pageNumber,
             "sysparm_time_zone" : "UTC"
          }
          # limits ueber das Tardis Gateway passen so sicherlich noch nicht
-         if (self._limitResult>0):   
-            reqParamDict["pageSize"]=self._limitResult
-         if (self._limitStart>0):
-            pageSkip=self._limitStart//reqParamDict["pageSize"]
-            reqParamDict["pageNumber"]=pageSkip
+#         if (self._limitResult>0):   
+#            reqParamDict["pageSize"]=self._limitResult
+#         if (self._limitStart>0):
+#            pageSkip=self._limitStart//reqParamDict["pageSize"]
+#            reqParamDict["pageNumber"]=pageSkip
 
 
       if (self._sysparm_query):

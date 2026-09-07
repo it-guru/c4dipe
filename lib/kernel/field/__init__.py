@@ -3,6 +3,7 @@ from .base import Field
 from .Id           import FieldId
 from .Text         import FieldText
 from .URL          import FieldURL
+from .RecNo        import FieldRecNo
 from .RecordURL    import FieldRecordURL
 from .Date         import FieldDate
 from .MDate        import FieldMDate
