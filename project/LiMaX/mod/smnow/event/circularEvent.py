@@ -20,7 +20,7 @@ class Event(event):
            "exitmsg": "failed to instance "+dataobjname
          })
 
-      o.setFilter({})
+      o.setFilter({"mdate": ">2026-06-01 18:15:03"})
       o.setCurrentView("(ALL)")
       o.setCurrentOrder(["mdate"])
       o.limit(2000,140)
