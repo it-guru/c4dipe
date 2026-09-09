@@ -43,7 +43,7 @@ import copy
 #
 
 class DataObj:
-   def __init__(self, db_connection_string: str = None):
+   def __init__(self):
       self._Field={}
       self._FieldOrder=[]
       self._GroupOrder=[]
@@ -64,6 +64,10 @@ class DataObj:
       if (hasattr(self, "_class_fields")):
          self.addFields(*self._class_fields)
       super().__init__()
+
+   def clone(self):
+      dataobj=self.__class__()
+      return(dataobj)
 
 
    def __init_subclass__(cls, **kwargs):
@@ -263,10 +267,31 @@ class DataObj:
        # backend specific insert of record 
        return(None)
 
+   def updateRecord(self,newRec: dict,filterExpr)->int:  #return n affected rows
+       # backend specific update of record 
+       return(0)
+
    def _validatedWriteOperation(self,mode:str,oldRec: dict,newRec: dict,flt):
       orgNewRec=None
       if (not newRec is None):
          orgNewRec=copy.deepcopy(newRec)
+
+      #######################################################################
+      # allow call without oldRec definition on update 
+      if (mode=="update" and oldRec is None):
+         fltObj=self.clone()
+         fltObj.setFilter(flt)
+         fltObj.setCurrentView("(ALL)")
+         cntEffected=0
+         if (o.query()):
+            while True:
+              row=o.get_next()
+              if row is None: break
+              cntEffected+=self.validatedUpdateRecord(row,newRec,flt)
+         return(cntEffected)
+      #######################################################################
+              
+
       
       # basic procedure:
       # ----------------
@@ -300,6 +325,9 @@ class DataObj:
             opResult=self.insertRecord(newRec)
          elif (mode=="update"):
             opResult=self.updateRecord(newRec,flt)
+            if (opResult>0):
+               self.finishUpdateRecord(oldRec,newRec,orgNewRec)
+
          return(opResult)
       return(None)
 
@@ -315,26 +343,7 @@ class DataObj:
       return(self._validatedWriteOperation("update",oldRec,newRec,flt))
       
 
-   def updateRecord(self,newRec: dict,filterExpr)->int:  #return n affected rows
-       return(0)
-
-
-   def validatedUpdateRecord(self, oldrec: dict,newrec: dict, filter: dict) -> str:
-      orgNewRec=copy.deepcopy(newrec)
-      
-      # do field validate (with posible field-value changes)
-
-      # check security
-      if (has_request_context() and \
-          g.getattr("isWebUIRequest",False)):
-         print("WebUI validatedInsertRecord")
-
-      if (self.validate(oldrec,newrec,orgNewRec)):
-         return(self.updateRecord(oldrec,newrec,orgNewRec))
-      return(None)
-
-
-   def finishUpdateRecord(self, oldrec: dict, newrec: dict, orgRec: dict):
+   def finishUpdateRecord(self,oldRec: dict, newRec: dict, orgRec: dict):
        return True
 
 

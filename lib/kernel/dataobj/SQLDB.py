@@ -268,10 +268,9 @@ class DataObjSQLDB(DataObj):
 
        return None
 
+    def updateRecord(self,newRec: dict,filterExpr)->int: #return n affected rows
+        return(0)
 
-    def updateRecord(self,  newRec: dict) -> str:
-
-        return True
 
     def deleteRecord(self, record_id: int) -> bool:
         if record_id not in self.records:

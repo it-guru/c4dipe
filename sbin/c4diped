@@ -144,7 +144,7 @@ def invoke_W6App_listener():
       'bind': '127.0.0.1:8080',
       'workers': 4,
       'threads': 16,
-      'timeout': 610,
+      'timeout': 610,        # now WebUI Requests are limited to 10min. (hard!)
       'graceful_timeout': 610,
       'proc_name': "W6App",
       'loglevel': os.environ.get('LOG_LEVEL', 'warning').lower()
