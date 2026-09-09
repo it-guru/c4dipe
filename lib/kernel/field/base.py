@@ -43,9 +43,14 @@ class Field(dict):
       if (mode == "order"):
          if (self.backendname):
             return(self.backendname)
+      if (mode == "insert" or mode == "update"):
+         if (self.backendname):
+            return(self.backendname)
       return(None)
 
-   def validate(self,oldrec: dict, newrec: dict, orgRec: dict):
+   def validate(self,oldRec: dict, newRec: dict, orgRec: dict):
+
+
       return(False)
 
    def prepConditionString(self,condStr: str) -> str :

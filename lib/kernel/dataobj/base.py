@@ -48,7 +48,7 @@ class DataObj:
       self._FieldOrder=[]
       self._GroupOrder=[]
 
-      self._CurrentFilterExpr=[[]]
+      self._CurrentFilterExpr=[[{}]]
       self._CurrentAST=None
       self._CurrentView=[]
       self._CurrentOrder=[]
@@ -58,6 +58,8 @@ class DataObj:
       self._limitResult=0
       self._limitStart=0
       self._limitSoft=False   # False means limit by backend
+      
+      self.handleSecure=False # Switch to activate User/Group access validation
 
       if (hasattr(self, "_class_fields")):
          self.addFields(*self._class_fields)
@@ -78,7 +80,13 @@ class DataObj:
 
    def setFilter(self,filterExpr):
       logger.debug("base: setFilter: "+pformat(filterExpr))
-      if (isinstance(filterExpr,dict)):
+      if (isinstance(filterExpr,str)):
+         if (name in self._Field):
+            if (isinstance(self._Field[name],FieldId)):
+               self._CurrentFilterExpr=[[{name: [filterExpr]}]]
+               return(True)
+         raise ValueError(f"invalid str filter expression '{{filterExpr}}'")
+      elif (isinstance(filterExpr,dict)):
          self._CurrentFilterExpr=[[filterExpr]]
       elif (isinstance(filterExpr,list)):
          haveSubDict=False
@@ -173,7 +181,6 @@ class DataObj:
        return(False)
 
    def getDictList(self,view=None,filterExpr=None):
-
       if (not view is None):
          self.setCurrentView(view) 
       if (len(self._CurrentOrder) == 0): # means no order defined
@@ -195,6 +202,27 @@ class DataObj:
 
       return(result["data"])
 
+   def getFirstDict(self,view=None,filterExpr=None):
+      if (not view is None):
+         self.setCurrentView(view) 
+      if (len(self._CurrentOrder) == 0): # means no order defined
+         self.setCurrentOrder(self._CurrentView)
+      if (not filterExpr is None):
+         self.setFilter(filterExpr)
+
+      if (self.query()):
+         while True:
+           row=self.get_next()
+           if row is None: break
+           return(row)
+      else:
+         print("DB Error: %s" % self.lastError())
+
+      return(None)
+
+
+
+
    def countRecords(self) -> int:
       return(self.countRecordsSoft())
 
@@ -207,16 +235,23 @@ class DataObj:
            n+=1
       return(n)
 
+
+
+
    # Delete Validation
 
    def validateDelete(self,oldrec: dict):
+      return(False)
+
+   def delete(self,oldRec: dict, filterExpr) -> bool:
+      # backend specific delete record implementation
       return(False)
 
 
    # Update/Insert Validation
 
    def preValidate(self,oldrec: dict, newrec: dict, orgRec: dict):
-      # validate BEFORE fieldValidate
+      # validate BEFORE fieldValidate (normaly only used in workflow context)
       return(False)
 
    def validate(self,oldrec: dict, newrec: dict, orgRec: dict):
@@ -224,28 +259,65 @@ class DataObj:
       return(False)
 
 
+   def insertRecord(self,newRec: dict) -> str:  # returns the new assigned ID
+       # backend specific insert of record 
+       return(None)
 
-   def insertRecord(self,newrec: dict) -> str:
-       return True
-
-   def validatedInsertRecord(self, newrec: dict) -> str:
-      orgNewRec=copy.deepcopy(newrec)
+   def _validatedWriteOperation(self,mode:str,oldRec: dict,newRec: dict,flt):
+      orgNewRec=None
+      if (not newRec is None):
+         orgNewRec=copy.deepcopy(newRec)
       
-      # do field validate (with posible field-value changes)
+      # basic procedure:
+      # ----------------
+      # loop if oldRec=None and mode=update
+      #    - self.preValidate
+      #      - general pre validations (normaly only in workflows)
+      #    if (self.handleSecure):
+      #       - okGroups=self.isWriteValid(oldRec,newRec)
+      #         get allowed fieldgroup or fieldgroup.field access
+      #       - self.checkFieldAccess(groups,None,newRec,orgNewRec)
+      #         check if write access is allowed to requested fields
+      #    - self.normalizeByIOMap("preWrite",newRec)
+      #      execute a configurable list of regex on newRec
+      #    - self.validateFields(oldRec,newRec,orgNewRec)
+      #      - check valid values for field types (f.e. date strings)
+      #      - resolv vjoins or select values
+      #    if (self.handleSecure):
+      #       - self.secureValidate(oldRec,newRec,orgNewRec,okGroups)
+      #         check new values based in security context (group or user)
+      #    - self.validate(oldRec,newRec,orgNewRec)
+      #    - self.finishWriteFieldValues(None,newRec,orgNewRec)
+      #      prepare FieldValues for Backend writes (f.e. Date as to_date on 
+      #         oracle or compress container Fields to conainer
+      #    - self.insertRecord(newRec)
+      #    - self.finishWrite(oldRec,newRec)
+      #    - self.storeDelta(oldRec,newRec,orgNewRec)
 
-      # check security
-      if (has_request_context() and \
-          g.getattr("isWebUIRequest",False)):
-         print("WebUI validatedInsertRecord")
-
-      if (self.validate(None,newrec,orgNewRec)):
-         return(self.insertRecord(newrec,orgNewRec))
+      if (self.validate(oldRec,newRec,orgNewRec)):
+         opResult=None
+         if (mode=="insert"): 
+            opResult=self.insertRecord(newRec)
+         elif (mode=="update"):
+            opResult=self.updateRecord(newRec,flt)
+         return(opResult)
       return(None)
 
 
+   def validatedInsertRecord(self, newRec: dict) -> str:
+      return(self._validatedWriteOperation("insert",None,newRec,None))
 
-   def updateRecord(self, oldrec: dict, newrec: dict, orgRec: dict):
-       return True
+
+
+   def validatedUpdateRecord(self,oldRec: dict, newRec: dict,flt) -> int:
+      if (flt is None):
+         return(None)
+      return(self._validatedWriteOperation("update",oldRec,newRec,flt))
+      
+
+   def updateRecord(self,newRec: dict,filterExpr)->int:  #return n affected rows
+       return(0)
+
 
    def validatedUpdateRecord(self, oldrec: dict,newrec: dict, filter: dict) -> str:
       orgNewRec=copy.deepcopy(newrec)

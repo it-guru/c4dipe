@@ -28,15 +28,20 @@ def get_engine(configsection: str):
                 raise ValueError(
                     f"DATAOBJCONNECT key missing in section '{configsection}'"
                 )
-
-            engine = create_engine(
-                conn_str,
-                pool_size=10,
-                max_overflow=10,
-                pool_timeout=30,
-                pool_recycle=3600,
-                pool_pre_ping=True
-            )
+            eparam={
+                "pool_size":     10,
+                "max_overflow":  10,
+                "pool_timeout":  30,
+                "pool_recycle":  3600,
+                "pool_pre_ping": True,
+                "connect_args":  {}
+            }
+            if (conn_str.startswith("mysql+pymysql:") \
+                or conn_str.startswith("mysql:")):
+               from pymysql.constants import CLIENT
+               eparam["connect_args"]["client_flag"] = CLIENT.FOUND_ROWS
+            
+            engine = create_engine(conn_str,**eparam)
 
             _ENGINES[configsection] = engine
             return engine
@@ -87,18 +92,29 @@ def closeAllOpenTransactionsInCurrentThread(exception=None):
 
 
 def _auto_close_on_exit():
-    exc_type, exc_val, _ = sys.exc_info()
+  exc_type, exc_val, _ = sys.exc_info()
 
-    is_error = False
-    if exc_type is not None:
-        if issubclass(exc_type, SystemExit):
-            is_error = exc_val.code not in (0, None)
-        else:
-            is_error = True
+  is_error = False
 
-    # Wenn Fehler vorliegt -> Rollback, sonst Commit
-    err = exc_val if is_error else None
-    closeAllOpenTransactionsInCurrentThread(exception=err)
+  if exc_type is not None:
+    # 1. Abbruch durch SystemExit (z.B. sys.exit(0) vs sys.exit(1))
+    if issubclass(exc_type, SystemExit):
+      is_error = exc_val.code not in (0, None)
+    # 2. Abbruch durch Tastatur (Ctrl+C), GeneratorExit oder normale Exceptions
+    elif issubclass(exc_type, (KeyboardInterrupt, BaseException)):
+      is_error = True
+
+  # Falls is_error True ist, wird exc_val (oder eine Dummy-Exception) übergeben,
+  # was in closeAllOpenTransactions... den Rollback auslöst!
+  err = exc_val if is_error else None
+
+  # Falls kein exc_val da ist, aber is_error True (Sicherheitsnetz)
+  if is_error and err is None:
+    err = RuntimeError("Interrupted or abnormal exit")
+
+  closeAllOpenTransactionsInCurrentThread(exception=err)
+
+
 
 
 atexit.register(_auto_close_on_exit)

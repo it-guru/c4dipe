@@ -1,10 +1,11 @@
 from .base import DataObj
-from sqlalchemy import text,select,event
+from sqlalchemy import text,table,select,event,insert,update,column
 from sqlalchemy.engine import Engine
 from sqlalchemy.exc import DBAPIError, SQLAlchemyError
 from rawRec import rawRec
 from kernel.condition import *
 from logger import *
+import re
 
 import dbpool
 from datetime import datetime, timezone
@@ -39,8 +40,11 @@ class DataObjSQLDB(DataObj):
        if (self._connect()):
           logger.debug("SQLDB: condition: "+pformat(self._CurrentFilterExpr))
           logger.debug("SQLDB: dialect: '"+self.db.dialect.name+"'")
-          ASTprocessor=ConditionSQL()
-          wherestr,qparam=ASTprocessor.compile(self._CurrentAST.getAST())
+          wherestr=""
+          qparam=""
+          if (self._CurrentAST):
+             ASTprocessor=ConditionSQL()
+             wherestr,qparam=ASTprocessor.compile(self._CurrentAST.getAST())
           logger.debug("SQLDB: AST wherestr: '"+pformat(wherestr)+"'")
          
           selLst=[]
@@ -202,19 +206,71 @@ class DataObjSQLDB(DataObj):
        return(None)
 
 
+    def insertRecord(self,  newRec: dict) -> str:
+       if (self._connect()):
+          insertID=None
+          idobj=self.getIdField()
+          if (idobj):
+             if (not idobj.name in newRec \
+                 or newRec[idobj.name] is None):
+                if (idobj.autoGen):
+                   id=self.createUniqueId()
+                   if (not id):
+                      raise(ValueError(f"unable to autoGen unique id "
+                                       f"on insertRecord"))
+                   newRec[idobj.name]=id
+                   insertID=id
+             else:
+                insertID=newRec[idobj.name]
+         
+          #print("SQLDB: newRec: ", end='')
+          #pprint(newRec)
+          rawRec={}
+         
+          for fname in self._Field:
+             if (not fname in newRec): 
+                continue
+             fieldValue=newRec[fname]
+             alias=getattr(self._Field[fname],"alias",None)
+             if (alias):
+                if (not alias in self._Field):
+                   raise(ValueError(f"unable to resolv alias in field"))
+                else:
+                   fname=alias
+             backendname=self._Field[fname].getBackendName("insert")
+             if (not backendname):
+                continue
+             rawname=re.sub(r"^.*\.", "", backendname)
+             rawRec[rawname]=fieldValue
+         
+         
+          #print("SQLDB: rawRec: ", end='')
+          #pprint(rawRec)
+          cols = [column(k) for k in rawRec.keys()]
+          backendTable=table(self._primaryBackendTable,*cols)
+          stmt=insert(backendTable).values(**rawRec)
+          debstmt=re.sub(r"\s+", " ",str(stmt))
+          debstmt+=" param="+pformat(rawRec,width=80*4,compact=True)
+          #logger.debug("SQLDB: rawRec %s" % \
+          #             pformat(rawRec,width=80*4,compact=True))
+          logger.debug("SQLDB: insert stmt=%s" % debstmt)
 
-    def insertRecord(self,  newrec: dict, orgrec: dict) -> str:
-        return True
+          try:
+            result=self.db.execute(stmt)
+            if (result.rowcount>0):
+               return(insertID)
+            return(None)
+         
+          except Exception as e:
+              raise RuntimeError(
+                  f" 'insertRecord failed: {e}"
+              ) from e
+
+       return None
 
 
-    def updateRecord(self, record_id: int, new_data: dict) -> bool:
-        if record_id not in self.records:
-            print(f"Fehler: Datensatz {record_id} nicht gefunden.")
-            return False
+    def updateRecord(self,  newRec: dict) -> str:
 
-        # Aktualisiert die Werte im Dictionary
-        self.records[record_id].update(new_data)
-        print(f"Datensatz {record_id} erfolgreich aktualisiert.")
         return True
 
     def deleteRecord(self, record_id: int) -> bool:

@@ -2,20 +2,20 @@ from kernel.field   import *
 from kernel.dataobj import *
 
 
-class LimaSystem(DataObjSQLDB):
+class SmnowSmnowsys(DataObjSQLDB):
    _configSection          = "LIMA"
-   _primaryBackendTable    = "system"
+   _primaryBackendTable    = "smnow_system"
 
    name             = FieldText(
-      backendname          = "system.name",
+      backendname          = _primaryBackendTable+".name",
       label                = "name"
    )
    sysid            = FieldText(
-      backendname          = "system.sys_id",
+      backendname          = _primaryBackendTable+".sys_id",
       label                = "sys_id"
    )
    id               = FieldId(
-      backendname          = "system.id",
+      backendname          = _primaryBackendTable+".id",
    )
    urlofcurrentrec  = FieldRecordURL()
    mdate            = FieldMDate()

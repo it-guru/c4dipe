@@ -162,13 +162,14 @@ def do_dbcall(AppConfig,module,dataobj,method):
 @app.route('/<basePath>/<AppConfig>/rpcCreateUniqueId')
 def rpcCreateUniqueId(basePath,AppConfig):
    self=current_app._get_current_object()
-   current_app.logger.info("/rpcCreateUniqueId call.")
+   logger.info("/rpcCreateUniqueId call.")
    newID=None
    with self.UniqueID_lck:
      if len(self.UniqueID_rec["UniqueIdPool"])==0 :
-        for i in range(9):
+        for i in range(999):
             self.UniqueID_rec["UniqueIdPool"].append(int("%d09%04d" % (time.time(),i)))
      newID=self.UniqueID_rec["UniqueIdPool"].pop(0)
+   logger.info("/rpcCreateUniqueId returned "+str(newID))
    return jsonify({"status":"success","exitcode": 0, "UniqueID": newID})
 
 

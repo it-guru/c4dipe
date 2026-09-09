@@ -17,6 +17,10 @@ class DataObjRest(DataObjStatic):
    def __init__(self):
       super().__init__()
       self._rawData=[] 
+      self._pageNumber=1      # Support for page-numberging without setFilter
+      self._maxPages=None     #
+      self._nextPage=None     #
+      self._subDataCollectLoopCount=0
 
    def setFilter(self,filterExpr):
       super().setFilter(filterExpr)

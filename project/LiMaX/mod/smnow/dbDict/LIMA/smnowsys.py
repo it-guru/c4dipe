@@ -16,7 +16,7 @@ from sqlalchemy import (
 
 def get_table_schema(metadata):
    return Table(
-      "system",
+      "smnow_system",
       metadata,
       # --- Primary Key ---
       Column(
@@ -48,7 +48,7 @@ def get_table_schema(metadata):
       Column("lastqcheck", DateTime, nullable=True),
       Column("description", String(128), nullable=True),
       UniqueConstraint("sys_id", name="sysid"),
-      Index("system_lastqcheck", "lastqcheck"),
+      Index("smnowsys_lastqcheck", "lastqcheck"),
       extend_existing=True
    )
 

@@ -26,8 +26,11 @@ class DataObjServiceNow(DataObjRest):
       super().__init__()
 
    def compileAST(self):
-      ASTprocessor=ConditionServiceNow()
-      self._sysparm_query=ASTprocessor.compile(self._CurrentAST.getAST())
+      self._sysparm_query=None
+      if (self._CurrentAST):
+         ASTprocessor=ConditionServiceNow()
+         self._sysparm_query=ASTprocessor.compile(self._CurrentAST.getAST())
+      
 
       self._sysparm_orderstr=""
       if not self._CurrentOrder:
