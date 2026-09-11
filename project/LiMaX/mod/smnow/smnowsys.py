@@ -14,14 +14,21 @@ class SmnowSmnowsys(DataObjSQLDB):
       backendname          = _primaryBackendTable+".sys_id",
       label                = "sys_id"
    )
+   conumber         = FieldText(
+      backendname          = _primaryBackendTable+".conumber",
+      label                = "cost element"
+   )
    id               = FieldId(
       backendname          = _primaryBackendTable+".id",
+   )
+   recno                   = FieldRecNo(
+      label                = "Record Number"
    )
    urlofcurrentrec  = FieldRecordURL()
    mdate            = FieldMDate()
 
    def validate(self,oldrec: dict, newrec: dict, orgRec: dict):
-      print("in validate of LimaSystem")
+      #print("in validate of LimaSystem")
       return(True)
 
 

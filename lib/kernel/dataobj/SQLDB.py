@@ -269,7 +269,56 @@ class DataObjSQLDB(DataObj):
        return None
 
     def updateRecord(self,newRec: dict,filterExpr)->int: #return n affected rows
-        return(0)
+       if (self._connect()):
+          rawRec={}
+          normalzedFilter=self._normalizeFilterExpression(filterExpr)
+          updateConditionAST=ConditionalAST(normalzedFilter,self._Field)
+          ASTprocessor=ConditionSQL()
+          wherestr,qparam=ASTprocessor.compile(updateConditionAST.getAST())
+
+          for fname in self._Field:
+             if (not fname in newRec): 
+                continue
+             fieldValue=newRec[fname]
+             alias=getattr(self._Field[fname],"alias",None)
+             if (alias):
+                if (not alias in self._Field):
+                   raise(ValueError(f"unable to resolv alias in field"))
+                else:
+                   fname=alias
+             backendname=self._Field[fname].getBackendName("update")
+             if (not backendname):
+                continue
+             rawname=re.sub(r"^.*\.", "", backendname)
+             rawRec[rawname]=fieldValue
+         
+          cols = [column(k) for k in rawRec.keys()]
+          backendTable=table(self._primaryBackendTable,*cols)
+
+          stmt=update(backendTable).values(**rawRec)
+          if wherestr:
+             stmt=stmt.where(text(wherestr))
+         
+          debstmt=re.sub(r"\s+", " ",str(stmt))
+          debstmt+=" rawRec="+pformat(rawRec,width=80*4,compact=True)
+          debstmt+=" qparam="+pformat(qparam,width=80*4,compact=True)
+          #logger.debug("SQLDB: rawRec %s" % \
+          #             pformat(rawRec,width=80*4,compact=True))
+          logger.debug("SQLDB: update stmt=%s" % debstmt)
+
+          try:
+            exec_params = {**rawRec, **qparam}
+            result=self.db.execute(stmt,exec_params)
+            if (result.rowcount>0):
+               return(result.rowcount)
+            return(0)
+         
+          except Exception as e:
+              raise RuntimeError(
+                  f" 'updateRecord failed: {e}"
+              ) from e
+
+       return(0)
 
 
     def deleteRecord(self, record_id: int) -> bool:

@@ -184,6 +184,7 @@ class Event(event):
       for script_op in upgrade_ops.ops:
         collect_new_tables(script_op)
 
+
       # 2. Rekursive Ausführung mit Index-Filterung & Exception-Handling
       def apply_op(script_op):
         if hasattr(script_op, "ops"):
@@ -192,6 +193,10 @@ class Event(event):
           return
 
         op_type = type(script_op).__name__
+
+        # Neu: Spalten-Objekt entkoppeln, damit es nicht "already assigned to Table" wirft
+        if op_type.endswith("AddColumnOp") and hasattr(script_op, "column"):
+          script_op.column = script_op.column.copy()
 
         # Falls es ein CreateIndexOp für eine gerade eben erstellte Tabelle ist -> überspringen,
         # da MySQL den Index bereits beim CREATE TABLE angelegt hat.

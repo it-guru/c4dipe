@@ -35,14 +35,16 @@ class Event(event):
          while True:
            row=o.get_next()
            if row is None: break
+           logger.info("-----------------------------------")
            logger.info("REC: %06d sys_id='%s' mdate='%s' name='%s'" % (int(row["recno"]),row["sysid"],row["mdate"],row["name"]))
            sys.setFilter({"sysid": [row["sysid"]]})
            r=sys.getDictList("(ALL)")
-           if (not len(r)):
-              #print("recno=%03d id %s not found" % (row["recno"],row["sysid"]))
+           if (len(r)==0):   # not found local - processing insert
+              print("SMNOW recno=%03d id %s not found" % (row["recno"],row["sysid"]))
               newrec={
                  "name": row["name"],
                  "sysid": row["sysid"],
+                 "conumber": row["conumber"],
                  "mdate": row["mdate"]
               }
               try:
@@ -51,19 +53,22 @@ class Event(event):
 
               except Exception as e:
                  logger.error(f" 'circularEvent insert failed: {e}")
-           else:
+           else:            # found local - processing update
               for oldRec in r:
+                 print("oldRec recno=%03d id %s try to update" \
+                       % (oldRec["recno"],str(oldRec["id"])))
                  newrec={
                     "name": row["name"],
                     "sysid": row["sysid"],
+                    "conumber": row["conumber"],
                     "mdate": row["mdate"]
                  }
                  try:
-                    nAffected=sys.validatedUpdateRecord(oldRec,newrec,{"id":[row["id"]]})
+                    nAffected=sys.validatedUpdateRecord(oldRec,newrec,[[{"id":[oldRec["id"]]}]])
                     logger.info(f"validatedUpdateRecord={str(nAffected)}")
                 
                  except Exception as e:
-                    logger.error(f" 'circularEvent insert failed: {e}")
+                    logger.error(f" 'circularEvent update failed: {e}")
 
 
 

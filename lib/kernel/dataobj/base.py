@@ -82,30 +82,30 @@ class DataObj:
             cls._class_fields.append(attr_value)
 
 
-   def setFilter(self,filterExpr):
-      logger.debug("base: setFilter: "+pformat(filterExpr))
-      if (isinstance(filterExpr,str)):
+   def _normalizeFilterExpression(self,flt:dict)-> dict:
+      if (isinstance(flt,str)):
          if (name in self._Field):
             if (isinstance(self._Field[name],FieldId)):
-               self._CurrentFilterExpr=[[{name: [filterExpr]}]]
-               return(True)
-         raise ValueError(f"invalid str filter expression '{{filterExpr}}'")
-      elif (isinstance(filterExpr,dict)):
-         self._CurrentFilterExpr=[[filterExpr]]
-      elif (isinstance(filterExpr,list)):
+               flt=[[{name: [flt]}]]
+               return(flt)
+         raise ValueError(f"invalid str filter expression '{{flt}}'")
+      elif (isinstance(flt,dict)):
+         flt=[[flt]]
+      elif (isinstance(flt,list)):
          haveSubDict=False
-         for subEnt in filterExpr:
+         for subEnt in flt:
             if (isinstance(subEnt,dict)):
                haveSubDict=True
          if (haveSubDict):
-            self._CurrentFilterExpr=[filterExpr]
-         else:
-            self._CurrentFilterExpr=filterExpr
-      else:
-         self._CurrentFilterExpr=filterExpr
+            flt=[flt]
+      return(flt)
+
+
+
+   def setFilter(self,filterExpr):
+      normalzedFilter=self._normalizeFilterExpression(filterExpr)
+      self._CurrentFilterExpr=normalzedFilter 
       self._CurrentAST=ConditionalAST(self._CurrentFilterExpr,self._Field)
-
-
       return(True) 
 
    def secureSetFilter(self,filterExpr):

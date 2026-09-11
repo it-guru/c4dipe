@@ -14,10 +14,17 @@ class LimaSystem(DataObjSQLDB):
       backendname          = "system.sys_id",
       label                = "sys_id"
    )
+   conumber         = FieldText(
+      backendname          = "system.conumber",
+      label                = "cost element"
+   )
    id               = FieldId(
       backendname          = "system.id",
    )
    urlofcurrentrec  = FieldRecordURL()
+   recno                   = FieldRecNo(
+      label                = "Record Number"
+   )
    mdate            = FieldMDate()
 
    def validate(self,oldrec: dict, newrec: dict, orgRec: dict):

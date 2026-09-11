@@ -28,7 +28,13 @@ def get_table_schema(metadata):
       ),
       # --- Columns ---
       Column("name", String(30), nullable=False, server_default=text("''")),
+      Column("conumber", String(128), nullable=True),
       Column("sys_id", String(255), nullable=False, server_default=text("''")),
+      Column(
+         "lastupdate",
+         DateTime,
+         nullable=True
+      ),
       Column(
          "createdate",
          DateTime,
